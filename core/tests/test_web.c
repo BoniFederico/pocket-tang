@@ -145,9 +145,12 @@ static void test_ratelimit(void)
     pt_ratelimit_fail(&r, 10);
     pt_ratelimit_fail(&r, 10);
     TEST_ASSERT_TRUE(pt_ratelimit_allowed(&r, 10));
-    pt_ratelimit_fail(&r, 10); /* third failure: 1 s */
-    TEST_ASSERT_FALSE(pt_ratelimit_allowed(&r, 10));
-    TEST_ASSERT_TRUE(pt_ratelimit_allowed(&r, 11));
+    pt_ratelimit_fail(&r, 10); /* third failure: 5 s */
+    TEST_ASSERT_FALSE(pt_ratelimit_allowed(&r, 14));
+    TEST_ASSERT_TRUE(pt_ratelimit_allowed(&r, 15));
+    pt_ratelimit_fail(&r, 15); /* fourth: 10 s */
+    TEST_ASSERT_FALSE(pt_ratelimit_allowed(&r, 24));
+    TEST_ASSERT_TRUE(pt_ratelimit_allowed(&r, 25));
     for (int i = 0; i < 20; i++) {
         pt_ratelimit_fail(&r, 100);
     }

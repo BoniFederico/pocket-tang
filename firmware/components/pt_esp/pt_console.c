@@ -17,6 +17,7 @@
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "pt/pt_web.h"
 
 static struct {
     struct arg_str *ssid;
@@ -95,6 +96,55 @@ static int cmd_rotate(int argc, char **argv)
     return res == ESP_OK ? 0 : 1;
 }
 
+static struct {
+    struct arg_str *pw;
+    struct arg_lit *lan;
+    struct arg_end *end;
+} s_adm;
+
+/* Test builds only: set the admin password (and optionally LAN admin) without the setup AP. */
+static int cmd_admin(int argc, char **argv)
+{
+    if (arg_parse(argc, argv, (void **)&s_adm) != 0) {
+        arg_print_errors(stderr, s_adm.end, argv[0]);
+        return 1;
+    }
+    const char *pw = s_adm.pw->sval[0];
+    pt_pw_t v;
+    if (pt_pw_set(&v, pw, strlen(pw), PT_PW_ITER_DEFAULT) != PT_OK) {
+        printf("PT_ADMIN invalid\n");
+        return 1;
+    }
+    pt_config_t cfg;
+    pt_store_load_config(&cfg);
+    memcpy(cfg.admin_salt, v.salt, sizeof(cfg.admin_salt));
+    memcpy(cfg.admin_hash, v.hash, sizeof(cfg.admin_hash));
+    cfg.admin_iter = v.iter;
+    cfg.admin_set = true;
+    cfg.lan_admin = s_adm.lan->count > 0;
+    esp_err_t err = pt_store_save_config(&cfg);
+    pt_zeroize(&cfg, sizeof(cfg));
+    pt_zeroize(&v, sizeof(v));
+    printf("PT_ADMIN %s\n", err == ESP_OK ? "OK" : esp_err_to_name(err));
+    return err == ESP_OK ? 0 : 1;
+}
+
+static struct {
+    struct arg_int *ms;
+    struct arg_end *end;
+} s_btn;
+
+static int cmd_button(int argc, char **argv)
+{
+    if (arg_parse(argc, argv, (void **)&s_btn) != 0) {
+        arg_print_errors(stderr, s_btn.end, argv[0]);
+        return 1;
+    }
+    pt_button_simulate((uint32_t)s_btn.ms->ival[0]);
+    printf("PT_BUTTON_SIM %d\n", s_btn.ms->ival[0]);
+    return 0;
+}
+
 static int cmd_reboot(int argc, char **argv)
 {
     (void)argc;
@@ -131,6 +181,11 @@ void pt_console_start(void)
     s_prov.host = arg_str0("n", "hostname", "<name>", "hostname");
     s_prov.port = arg_int0("p", "port", "<port>", "Tang port");
     s_prov.end = arg_end(4);
+    s_btn.ms = arg_int1(NULL, NULL, "<ms>", "hold duration in milliseconds");
+    s_btn.end = arg_end(1);
+    s_adm.pw = arg_str1(NULL, NULL, "<password>", "admin password (8-64 chars)");
+    s_adm.lan = arg_lit0("l", "lan", "allow the admin page on the LAN");
+    s_adm.end = arg_end(2);
     const esp_console_cmd_t cmds[] = {
         {.command = "provision",
          .help = "store Wi-Fi credentials (test builds)",
@@ -139,6 +194,14 @@ void pt_console_start(void)
         {.command = "stats", .help = "print statistics", .func = cmd_stats},
         {.command = "rotate", .help = "rotate Tang keys", .func = cmd_rotate},
         {.command = "reboot", .help = "restart", .func = cmd_reboot},
+        {.command = "button",
+         .help = "simulate holding BOOT",
+         .func = cmd_button,
+         .argtable = &s_btn},
+        {.command = "admin",
+         .help = "set admin password (test builds)",
+         .func = cmd_admin,
+         .argtable = &s_adm},
         {.command = "factory-reset",
          .help = "erase keys and configuration",
          .func = cmd_factory_reset},

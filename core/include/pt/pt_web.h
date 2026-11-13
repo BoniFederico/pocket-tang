@@ -114,7 +114,7 @@ typedef struct pt_ratelimit {
 
 /** @brief True if a login attempt is allowed now. */
 bool pt_ratelimit_allowed(const pt_ratelimit_t *r, uint32_t now);
-/** @brief Record a failed attempt (blocks for 2^(failures-3) seconds after 3 failures, max 300). */
+/** @brief Record a failed attempt: from the third failure on, block 5 s, doubling, max 300 s. */
 void pt_ratelimit_fail(pt_ratelimit_t *r, uint32_t now);
 /** @brief Reset after a successful login. */
 void pt_ratelimit_ok(pt_ratelimit_t *r);

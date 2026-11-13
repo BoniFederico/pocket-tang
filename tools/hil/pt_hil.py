@@ -252,7 +252,7 @@ def wait_ready(board: Board, reboot: bool = True, timeout: float = 60) -> str:
     if reboot:
         board.reset()
     t0 = time.time()
-    m = board.readline_until(r"PT_READY ip=(\S+) port=(\d+)", timeout)
+    m = board.readline_until(r"PT_READY mode=\w+ ip=(\S+) port=(\d+)", timeout)
     if not m or not m.group(1) or m.group(1) == "":
         raise RuntimeError("device did not report PT_READY with an IP address")
     log(f"device ready at {m.group(1)}:{m.group(2)} after {time.time() - t0:.1f}s")
@@ -383,6 +383,69 @@ def step_rotation(board: Board, base: str) -> dict:
     return res
 
 
+def step_ui(board: Board, base: str, password: str = "hil-admin-pass-1") -> dict:
+    """Set an admin password over the test console, enable LAN admin, test the UI."""
+    import ui_test
+    board.secrets.append(password)
+    m = board.command(f'admin "{password}" --lan', r"PT_ADMIN (\S+)", 15)
+    if not m or m.group(1) != "OK":
+        raise RuntimeError("could not set the admin password")
+    board.command("reboot", r"PT_REBOOT", 5)
+    base = wait_ready(board, reboot=False)
+    kid = exchange_kid(base)
+    body = json.dumps(CLIENT_JWK).encode()
+    res = ui_test.run(base, password, lambda: http("POST", f"{base}/rec/{exchange_kid(base)}", body)[0])
+    _ = kid
+    log(f"ui: passed={res['passed']} {res}")
+    return res
+
+
+def step_button(board: Board) -> dict:
+    """BOOT button through DTR: medium press enters setup mode (Tang keeps serving)."""
+    res = {}
+    board.set_boot_button(True)
+    res["led_hold_setup"] = board.readline_until(r"PT_LED hold-setup", 6) is not None
+    time.sleep(1.5)
+    board.set_boot_button(False)
+    m = board.readline_until(r"PT_BUTTON up after (\d+)", 5)
+    res["held_ms"] = int(m.group(1)) if m else 0
+    m = board.readline_until(r"PT_READY mode=(\w+) ip=(\S*)", 45)
+    res["mode_after"] = m.group(1) if m else None
+    if m and m.group(2):
+        st, _, _ = http("GET", f"http://{m.group(2)}/adv")
+        res["tang_in_setup_mode"] = st
+    # leave setup mode again
+    board.command("reboot", r"PT_REBOOT", 5)
+    m = board.readline_until(r"PT_READY mode=(\w+)", 45)
+    res["mode_after_reboot"] = m.group(1) if m else None
+    res["passed"] = (res["led_hold_setup"] and res["mode_after"] == "setup"
+                     and res.get("tang_in_setup_mode") == 200 and res["mode_after_reboot"] == "normal")
+    log(f"button: {res}")
+    return res
+
+
+def step_factory_reset(board: Board, env: dict, args, base: str) -> dict:
+    """BOOT held >= 10 s: keys and settings erased, device back in first-time setup mode."""
+    res = {}
+    before = sorted(thumbprint(k) for k in adv_keys(base))
+    board.set_boot_button(True)
+    res["led_hold_setup"] = board.readline_until(r"PT_LED hold-setup", 6) is not None
+    res["led_hold_reset"] = board.readline_until(r"PT_LED hold-reset", 10) is not None
+    time.sleep(0.5)
+    board.set_boot_button(False)
+    res["erased"] = board.readline_until(r"factory reset: erasing", 10) is not None
+    m = board.readline_until(r"PT_READY mode=(\w+) ip=(\S*)", 45)
+    res["mode_after"] = m.group(1) if m else None
+    res["unprovisioned"] = bool(m) and m.group(2) == ""
+    base2 = step_provision(board, env, args)
+    after = sorted(thumbprint(k) for k in adv_keys(base2))
+    res["new_keys"] = set(before).isdisjoint(after)
+    res["passed"] = all(res[k] for k in ("led_hold_setup", "led_hold_reset", "erased",
+                                          "unprovisioned", "new_keys")) and res["mode_after"] == "setup"
+    log(f"factory reset: {res}")
+    return res
+
+
 def write_report(results: dict) -> None:
     ART.mkdir(exist_ok=True)
     (ART / "hil-results.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
@@ -412,6 +475,9 @@ def main() -> int:
     st.add_argument("--workers", type=int, default=6)
     sub.add_parser("persistence")
     sub.add_parser("rotation")
+    sub.add_parser("ui")
+    sub.add_parser("button")
+    sub.add_parser("factory-reset")
     al = sub.add_parser("all")
     al.add_argument("--build-dir")
     al.add_argument("-n", type=int, default=50)
@@ -452,11 +518,16 @@ def main() -> int:
             results["stats_after_stress"] = board.stats()
             results["persistence"] = step_persistence(board, base)
             results["rotation"] = step_rotation(board, base)
+            results["button"] = step_button(board)
+            results["ui"] = step_ui(board, base)
+            results["factory_reset"] = step_factory_reset(board, env, args, base)
             results["stats_final"] = board.stats()
             write_report(results)
             ok = (results["interop"]["failed"] == 0 and results["stress"]["after_stress_rec"] == 200
                   and results["persistence"]["same_keys_after_reboot"]
-                  and results["rotation"]["old_binding_decrypts"])
+                  and results["rotation"]["old_binding_decrypts"]
+                  and results["button"]["passed"] and results["ui"]["passed"]
+                  and results["factory_reset"]["passed"])
             log("HIL " + ("PASSED" if ok else "FAILED"))
             return 0 if ok else 1
         if base is None:
@@ -478,6 +549,12 @@ def main() -> int:
             step_persistence(board, base)
         elif args.cmd == "rotation":
             step_rotation(board, base)
+        elif args.cmd == "ui":
+            return 0 if step_ui(board, base)["passed"] else 1
+        elif args.cmd == "factory-reset":
+            return 0 if step_factory_reset(board, env, args, base)["passed"] else 1
+        elif args.cmd == "button":
+            return 0 if step_button(board)["passed"] else 1
         return 0
     finally:
         try:

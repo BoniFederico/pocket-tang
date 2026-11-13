@@ -1,7 +1,9 @@
 /* Persistent storage on NVS. Namespaces: "ptcfg" (configuration), "ptkeys" (key-store blob). */
 #include <string.h>
 
+#include "bootloader_random.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "pt_esp.h"
@@ -167,4 +169,36 @@ esp_err_t pt_store_factory_reset(void)
         return nvs_flash_erase();
     }
     return ESP_OK;
+}
+
+esp_err_t pt_store_setup_password(char out[PT_SETUP_PW_LEN + 1])
+{
+    /* No 0/O/1/l/I: the password is read from a serial console and typed on a phone. */
+    static const char alphabet[] = "abcdefghijkmnpqrstuvwxyz23456789";
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NS_CFG, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        return err;
+    }
+    size_t len = PT_SETUP_PW_LEN + 1;
+    err = nvs_get_str(h, "appass", out, &len);
+    if (err == ESP_OK && len == PT_SETUP_PW_LEN + 1) {
+        nvs_close(h);
+        return ESP_OK;
+    }
+    /* Called before Wi-Fi starts: enable the SAR ADC entropy source so the hardware RNG is
+     * truly random (see the ESP-IDF random number generation documentation). */
+    bootloader_random_enable();
+    for (int i = 0; i < PT_SETUP_PW_LEN; i++) {
+        /* 32 symbols: 5 random bits each, no modulo bias */
+        out[i] = alphabet[esp_random() & 31u];
+    }
+    bootloader_random_disable();
+    out[PT_SETUP_PW_LEN] = '\0';
+    err = nvs_set_str(h, "appass", out);
+    if (err == ESP_OK) {
+        err = nvs_commit(h);
+    }
+    nvs_close(h);
+    return err;
 }
