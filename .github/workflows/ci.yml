@@ -64,3 +64,34 @@ jobs:
           path: |
             coverage.xml
             coverage*.html
+
+  fuzz:
+    name: Fuzz (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [json, b64url]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends clang-18 libclang-rt-18-dev ninja-build cmake
+      - name: Build fuzzers
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang-18 -DPT_FUZZ=ON -DBUILD_TESTING=OFF
+          cmake --build build --target fuzz_${{ matrix.target }}
+      - name: Fuzz for 60 s
+        run: |
+          mkdir -p corpus && cp core/fuzz/corpus/${{ matrix.target }}/* corpus/
+          build/core/fuzz/fuzz_${{ matrix.target }} -max_total_time=60 -max_len=4096 -timeout=10 corpus
+      - name: Upload crash artefacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: |
+            crash-*
+            timeout-*
+            leak-*

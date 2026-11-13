@@ -14,3 +14,5 @@ function(pt_add_test name)
 endfunction()
 
 pt_add_test(test_version test_version.c)
+pt_add_test(test_b64url test_b64url.c)
+pt_add_test(test_json test_json.c)
