@@ -11,7 +11,15 @@
 static pt_stats_t s_stats;
 static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 
-void pt_stats_event(pt_tang_event_t ev, int status, const char *client, uint32_t crypto_us)
+static pt_event_listener_fn s_listener;
+
+void pt_events_set_listener(pt_event_listener_fn fn)
+{
+    s_listener = fn;
+}
+
+void pt_stats_event(pt_tang_event_t ev, int status, const char *client, const char *kid,
+                    uint32_t crypto_us)
 {
     (void)status;
     struct timeval tv;
@@ -40,6 +48,10 @@ void pt_stats_event(pt_tang_event_t ev, int status, const char *client, uint32_t
         break;
     }
     taskEXIT_CRITICAL(&s_lock);
+    pt_event_listener_fn l = s_listener;
+    if (l != NULL && ev != PT_EV_ADV) {
+        l(ev, status, client ? client : "", kid ? kid : "");
+    }
 }
 
 void pt_stats_busy(void)

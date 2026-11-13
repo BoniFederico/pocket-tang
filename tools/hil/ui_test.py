@@ -68,7 +68,8 @@ def run(base: str, password: str, rec_check) -> dict:
     st, _, body = cl.req("GET", "/admin")
     token = csrf_of(body)
     res["dashboard"] = st == 200 and "Rotate keys" in body and bool(token)
-    res["no_private_material"] = '"d"' not in body and "PRIVATE" not in body.upper()
+    # A JWK private member or any PEM private key block must never appear.
+    res["no_private_material"] = '"d":' not in body and "PRIVATE KEY-----" not in body
     thp_before = re.findall(r"<td>signing</td><td><code>([^<]+)</code>", body)
 
     st, _, body = cl.req("POST", "/admin/rotate", {"csrf": "AAAAAAAAAAAAAAAAAAAAAA"})

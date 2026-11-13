@@ -31,6 +31,8 @@ less than half a watt.
   admin page with key rotation and a recovery lock.
 - BOOT button: hold 3 s for setup mode, hold 10 s for factory reset, with LED feedback.
 - Hardening profiles: Secure Boot (v1/v2), flash encryption, NVS encryption.
+- Optional [Home Assistant integration](user/home-assistant.md) over MQTT (TLS): events, sensors,
+  a lock switch and a restart button.
 - Measured on real hardware: `/rec` in about 0.57 s, `/adv` in about 26 ms, stable heap under
   stress. See [measurements](measurements.md).
 

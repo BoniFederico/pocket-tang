@@ -63,6 +63,7 @@ nav:
       - Binding disks with Clevis: user/clevis.md
       - Key rotation: user/rotation.md
       - Button, setup mode and factory reset: user/reset.md
+      - Home Assistant (MQTT): user/home-assistant.md
       - Hardening: user/hardening.md
       - Troubleshooting: user/troubleshooting.md
   - Design notes:
@@ -84,4 +85,5 @@ nav:
       - "0002 Own JSON parser": adr/0002-own-json-parser.md
       - "0003 Deviations from upstream": adr/0003-deviations-from-upstream-tang.md
       - "0004 Own HTTP server": adr/0004-own-http-server.md
+      - "0005 MQTT and Home Assistant": adr/0005-mqtt-home-assistant.md
   - Development: dev-setup.md

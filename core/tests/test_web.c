@@ -56,6 +56,22 @@ static void test_form_rejects(void)
     TEST_ASSERT_EQUAL(PT_ERR_LIMIT, get(big, "a", v, sizeof(v)));
 }
 
+static void test_form_multiline(void)
+{
+    char v[64];
+    const char *b = "ca=-----BEGIN%0D%0Aabc%0Adef%0D%0A-----END&x=a%0Ab";
+    TEST_ASSERT_EQUAL(PT_OK, pt_form_get_multiline(b, strlen(b), "ca", v, sizeof(v), NULL));
+    TEST_ASSERT_EQUAL_STRING("-----BEGIN\r\nabc\ndef\r\n-----END", v);
+    TEST_ASSERT_EQUAL(PT_ERR_INVALID, pt_form_get(b, strlen(b), "ca", v, sizeof(v), NULL));
+    TEST_ASSERT_EQUAL(PT_ERR_INVALID, pt_form_get(b, strlen(b), "x", v, sizeof(v), NULL));
+    const char *nul = "ca=a%00b";
+    TEST_ASSERT_EQUAL(PT_ERR_INVALID,
+                      pt_form_get_multiline(nul, strlen(nul), "ca", v, sizeof(v), NULL));
+    const char *esc = "ca=a%1Bb";
+    TEST_ASSERT_EQUAL(PT_ERR_INVALID,
+                      pt_form_get_multiline(esc, strlen(esc), "ca", v, sizeof(v), NULL));
+}
+
 static void test_html_escape(void)
 {
     char out[64];
@@ -165,6 +181,7 @@ int main(void)
     UNITY_BEGIN();
     RUN_TEST(test_form_parsing);
     RUN_TEST(test_form_rejects);
+    RUN_TEST(test_form_multiline);
     RUN_TEST(test_html_escape);
     RUN_TEST(test_pbkdf2_vectors);
     RUN_TEST(test_passwords);

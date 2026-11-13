@@ -62,6 +62,18 @@ menu "Pocket Tang"
             When the device is already provisioned and enters setup mode (button press), it
             returns to normal operation after this many minutes without configuration changes.
 
+    config PT_MQTT
+        bool "MQTT / Home Assistant integration"
+        default y
+        help
+            Compiles the optional MQTT client with Home Assistant discovery. It stays off until
+            enabled at runtime on the setup/admin page. Disable to build a smaller image.
+
+    config PT_MQTT_STATE_INTERVAL_S
+        int "MQTT state publish interval (seconds)"
+        depends on PT_MQTT
+        default 60
+
     config PT_TEST_CONSOLE
         bool "Enable the serial test console (TEST BUILDS ONLY)"
         default n

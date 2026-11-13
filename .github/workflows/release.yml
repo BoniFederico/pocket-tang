@@ -80,10 +80,15 @@ jobs:
             --notes-file notes.md --verify-tag
 
   docs:
-    name: Publish docs with the web flasher images
+    name: Refresh docs and web flasher images
     needs: publish
+    runs-on: ubuntu-24.04
     permissions:
-      contents: read
-      pages: write
-      id-token: write
-    uses: ./.github/workflows/docs.yml
+      actions: write
+    steps:
+      # Deploying Pages from the tag ref reported success but kept the previous content
+      # (v1.0.0). A workflow_dispatch on main reliably redeploys with the new release images.
+      - name: Trigger the docs workflow on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run docs.yml --repo "$GITHUB_REPOSITORY" --ref main

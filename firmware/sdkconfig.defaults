@@ -41,3 +41,12 @@ CONFIG_BT_ENABLED=n
 
 # lwIP: a few more sockets than HTTP connections (mDNS, SNTP, MQTT later)
 CONFIG_LWIP_MAX_SOCKETS=12
+
+# TLS (MQTT over mqtts://): allocate record buffers on demand and free handshake-only data, so a
+# connected TLS session costs ~24 KB of heap instead of ~69 KB (measured, docs/measurements.md).
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
+CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA=y
+CONFIG_MBEDTLS_DYNAMIC_FREE_CA_CERT=y
+CONFIG_MBEDTLS_SSL_KEEP_PEER_CERTIFICATE=n
+CONFIG_MBEDTLS_ASYMMETRIC_CONTENT_LEN=y
+CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=4096

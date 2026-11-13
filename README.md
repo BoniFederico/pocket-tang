@@ -35,6 +35,7 @@ compares status codes, advertisements and recovery results byte for byte against
 - Password-protected admin page: key thumbprints, rotation, recovery lock, factory reset.
 - BOOT button: hold 3 s for setup mode, hold 10 s for factory reset, with LED feedback.
 - Hardening profiles: Secure Boot v1/v2, flash encryption, NVS encryption.
+- Optional MQTT / Home Assistant integration with TLS: events, sensors, a lock switch and a restart button.
 - Browser-based installer (ESP Web Tools).
 
 <p align="center"><img src="docs/assets/img/admin-login.png" alt="Pocket Tang admin page login" width="600"></p>
@@ -95,8 +96,19 @@ Full guide: [Getting started](https://bonifederico.github.io/pocket-tang/user/ge
 
 ## Home Assistant
 
-MQTT integration with Home Assistant discovery (unlock and denied events, counters, a lock switch)
-is planned for v1.1.0.
+Optional MQTT integration with Home Assistant device discovery (off by default). It provides:
+
+- an `unlock` / `denied` event entity;
+- last unlock, last client, counters, RSSI, uptime and firmware version;
+- the key thumbprints, as diagnostics;
+- a persisted **recovery lock** switch that makes `/rec` refuse requests;
+- a restart button.
+
+The integration supports TLS with the public certificate bundle or a private CA. It runs on
+low-priority tasks: `/rec` latency is identical with it on or off
+([measurements](https://bonifederico.github.io/pocket-tang/measurements/#mqtt-and-home-assistant)).
+Key material never goes over MQTT. See the
+[Home Assistant guide](https://bonifederico.github.io/pocket-tang/user/home-assistant/).
 
 ## Documentation
 

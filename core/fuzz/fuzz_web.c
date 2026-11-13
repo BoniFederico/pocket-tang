@@ -19,6 +19,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
             }
         }
     }
+    if (pt_form_get_multiline((const char *)data, size, "ca", out, sizeof(out), &n) == PT_OK &&
+        strlen(out) != n) {
+        __builtin_trap();
+    }
     /* NUL-terminated copy for the string-based helpers */
     char buf[512];
     size_t m = size < sizeof(buf) - 1 ? size : sizeof(buf) - 1;
