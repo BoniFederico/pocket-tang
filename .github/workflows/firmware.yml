@@ -40,14 +40,13 @@ jobs:
       - name: Combine sdkconfig defaults for the profile
         run: |
           cd firmware
-          cp sdkconfig.defaults sdkconfig.ci.defaults
+          # Same precedence as ESP-IDF's list handling: base, base.<target>, then each profile.
+          cat sdkconfig.defaults "sdkconfig.defaults.${{ matrix.target }}" > sdkconfig.ci.defaults
           if [ "${{ matrix.profile }}" != "default" ]; then
             for p in $(echo "${{ matrix.profile }}" | tr '+' ' '); do
               cat "profiles/sdkconfig.$p.defaults" >> sdkconfig.ci.defaults
             done
           fi
-          # target-specific defaults are picked up next to the main defaults file
-          cp "sdkconfig.defaults.${{ matrix.target }}" "sdkconfig.ci.defaults.${{ matrix.target }}"
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
