@@ -29,7 +29,7 @@ jobs:
           - target: esp32
             profile: secure-esp32-sbv1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Throwaway signing key (build validation only, never used on a device)
         if: startsWith(matrix.profile, 'secure')
         run: |
@@ -80,7 +80,7 @@ jobs:
         run: |
           mkdir -p out
           cp firmware/build/pocket-tang.bin firmware/build/bootloader/bootloader.bin firmware/build/partition_table/partition-table.bin firmware/build/flasher_args.json firmware/build/sdkconfig out/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ !startsWith(matrix.profile, 'secure') }}
         with:
           name: firmware-${{ matrix.target }}-${{ matrix.profile }}
