@@ -8,9 +8,9 @@ Resume point for autonomous work. Keep this file current: what is done, what is 
 |-----------|-------|-------|
 | M0 scaffolding, toolchain, CI skeleton, board verification | #1 | done (PR #8) |
 | M1 portable core + host tests + clevis interop | #2 | done (PRs #11, #12) |
-| M2 ESP32 platform layer + HIL + measurements | #3 | in review |
-| M3 SoftAP provisioning, admin UI, button, LED | #4 | not started |
-| M4 hardening profiles, threat model, fuzzing | #5 | not started |
+| M2 ESP32 platform layer + HIL + measurements | #3 | done (PR #13) |
+| M3 SoftAP provisioning, admin UI, button, LED | #4 | done (PR #14) |
+| M4 hardening profiles, threat model, fuzzing | #5 | in review |
 | M5 docs site, README, v1.0.0 | #6 | not started |
 | M6 MQTT + Home Assistant, v1.1.0 | #7 | not started |
 
@@ -35,3 +35,8 @@ Resume point for autonomous work. Keep this file current: what is done, what is 
 - 2026-11-13 — M2: firmware serves Tang from the board (HIL: interop 31/31 over LAN, rotation and
   reboot persistence OK). Found and fixed a slowloris DoS in esp_http_server by replacing it with
   the portable `pt_server` (ADR-0004); measurements in `docs/measurements.md`.
+- 2026-11-13 — M3 merged (#14). Captive portal + setup form verified manually by the maintainer
+  with a phone (never switch the PC's Wi-Fi to the device AP: it breaks the session).
+- 2026-11-13 — M4: secure-sbv2 / secure-esp32-sbv1 profiles (build only, CI), HIL flash guard that
+  refuses Secure Boot / flash-encryption images, threat model, hardening guide, nightly fuzzing.
+  Limitations filed: #15 OTA, #16 HTTPS admin, #17 ESP-IDF v6, #18 keep-alive/IPv6, #19 Pico 2 W.

@@ -24,20 +24,29 @@ jobs:
       fail-fast: false
       matrix:
         target: [esp32, esp32c3, esp32s3]
-        profile: [default, test]
+        profile: [default, test, secure-sbv2]
+        include:
+          - target: esp32
+            profile: secure-esp32-sbv1
     steps:
       - uses: actions/checkout@v4
+      - name: Throwaway signing key (build validation only, never used on a device)
+        if: startsWith(matrix.profile, 'secure')
+        run: |
+          pip install --quiet esptool
+          cd firmware
+          espsecure generate-signing-key --version 2 --scheme rsa3072 secure_boot_signing_key.pem
+          espsecure generate-signing-key --version 1 secure_boot_signing_key_v1.pem
       - name: Combine sdkconfig defaults for the profile
         run: |
           cd firmware
-          cp sdkconfig.defaults sdkconfig.ci.defaults
+          # Same precedence as ESP-IDF's list handling: base, base.<target>, then each profile.
+          cat sdkconfig.defaults "sdkconfig.defaults.${{ matrix.target }}" > sdkconfig.ci.defaults
           if [ "${{ matrix.profile }}" != "default" ]; then
             for p in $(echo "${{ matrix.profile }}" | tr '+' ' '); do
               cat "profiles/sdkconfig.$p.defaults" >> sdkconfig.ci.defaults
             done
           fi
-          # target-specific defaults are picked up next to the main defaults file
-          cp "sdkconfig.defaults.${{ matrix.target }}" "sdkconfig.ci.defaults.${{ matrix.target }}"
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
@@ -51,11 +60,28 @@ jobs:
           if grep -q "^CONFIG_PT_TEST_CONSOLE=y" firmware/build/sdkconfig; then echo "test console enabled"; exit 1; fi
           if grep -aq "TEST CONSOLE ENABLED" firmware/build/pocket-tang.bin; then echo "test console code linked"; exit 1; fi
           echo "OK: no test console in ${{ matrix.target }}/${{ matrix.profile }}"
+      - name: Secure profile really enables Secure Boot, flash and NVS encryption
+        if: startsWith(matrix.profile, 'secure')
+        run: |
+          for opt in CONFIG_SECURE_BOOT=y CONFIG_SECURE_FLASH_ENCRYPTION_MODE_RELEASE=y CONFIG_NVS_ENCRYPTION=y; do
+            grep -q "^$opt$" firmware/build/sdkconfig || { echo "missing $opt"; exit 1; }
+          done
+          case "${{ matrix.profile }}" in
+            secure-sbv2) want=CONFIG_SECURE_BOOT_V2_ENABLED=y ;;
+            secure-esp32-sbv1) want=CONFIG_SECURE_BOOT_V1_ENABLED=y ;;
+          esac
+          grep -q "^$want$" firmware/build/sdkconfig || { echo "expected $want"; exit 1; }
+      - name: Remove signing keys
+        if: always() && startsWith(matrix.profile, 'secure')
+        run: rm -f firmware/secure_boot_signing_key*.pem
+      # Secure-profile images are signed with a throwaway key: never publish them.
       - name: Collect artifacts
+        if: ${{ !startsWith(matrix.profile, 'secure') }}
         run: |
           mkdir -p out
           cp firmware/build/pocket-tang.bin firmware/build/bootloader/bootloader.bin firmware/build/partition_table/partition-table.bin firmware/build/flasher_args.json firmware/build/sdkconfig out/
       - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(matrix.profile, 'secure') }}
         with:
           name: firmware-${{ matrix.target }}-${{ matrix.profile }}
           path: out

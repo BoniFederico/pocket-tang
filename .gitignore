@@ -83,3 +83,7 @@ compile_commands.json
 *.log
 hil-artifacts/
 firmware/sdkconfig.ci.defaults*
+
+# Secure Boot signing keys: NEVER commit
+*.pem
+firmware/secure_boot_signing_key*

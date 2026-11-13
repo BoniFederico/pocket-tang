@@ -213,6 +213,15 @@ def step_chip(args) -> dict:
 
 def step_flash(args) -> None:
     bdir = pathlib.Path(args.build_dir)
+    # SAFETY: never flash an image that enables Secure Boot or flash encryption. Its first boot
+    # burns eFuses irreversibly. The HIL runner only ever flashes development images.
+    sdk = (bdir / "sdkconfig").read_text(encoding="utf-8") if (bdir / "sdkconfig").exists() else ""
+    if not sdk:
+        raise SystemExit(f"refusing to flash: no sdkconfig next to the images in {bdir}")
+    for danger in ("CONFIG_SECURE_BOOT=y", "CONFIG_SECURE_FLASH_ENC_ENABLED=y",
+                   "CONFIG_SECURE_BOOT_V1_ENABLED=y", "CONFIG_SECURE_BOOT_V2_ENABLED=y"):
+        if re.search(rf"^{re.escape(danger)}$", sdk, re.M):
+            raise SystemExit(f"refusing to flash {bdir}: {danger} would burn eFuses irreversibly")
     fa = json.loads((bdir / "flasher_args.json").read_text())
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="pt-fw-"))
     cmd = [sys.executable, "-m", "esptool", "--chip", fa["extra_esptool_args"]["chip"],

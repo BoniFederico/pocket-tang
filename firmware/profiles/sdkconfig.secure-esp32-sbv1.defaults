@@ -1,0 +1,26 @@
+# =====================================================================================
+# PRODUCTION HARDENING for ESP32 silicon revisions < v3.0 (which do not support Secure
+# Boot v2): Secure Boot v1 (ECDSA P-256, one-time-flash bootloader) + flash encryption
+# (release) + NVS encryption.
+#
+# THE FIRST BOOT OF AN IMAGE BUILT WITH THIS PROFILE BURNS EFUSES. THIS IS IRREVERSIBLE.
+# With the one-time-flash bootloader the bootloader can never be updated. Read
+# docs/user/hardening.md first.
+# =====================================================================================
+CONFIG_PARTITION_TABLE_OFFSET=0x10000
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-secure.csv"
+
+CONFIG_SECURE_BOOT=y
+CONFIG_SECURE_BOOT_V1_ENABLED=y
+CONFIG_SECURE_BOOTLOADER_ONE_TIME_FLASH=y
+CONFIG_SECURE_SIGNED_APPS_ECDSA_SCHEME=y
+CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES=y
+CONFIG_SECURE_BOOT_SIGNING_KEY="secure_boot_signing_key_v1.pem"
+
+CONFIG_SECURE_FLASH_ENC_ENABLED=y
+CONFIG_SECURE_FLASH_ENCRYPTION_MODE_RELEASE=y
+
+CONFIG_NVS_ENCRYPTION=y
+CONFIG_NVS_SEC_KEY_PROTECT_USING_FLASH_ENC=y
+
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y

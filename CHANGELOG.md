@@ -29,6 +29,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tokens, login back-off).
 - Firmware: ESP32 platform layer serving Tang (NVS storage, crypto worker with bounded queue, Wi-Fi
   STA with WPA3, mDNS, SNTP, statistics), serial test console in the test profile only.
+- Firmware: setup mode (WPA2 access point, captive portal, AP+STA keeps Tang serving), admin UI
+  (PBKDF2 password, CSRF, back-off, CSP), BOOT button (setup / factory reset) and LED patterns.
+- Hardening profiles `secure-sbv2` and `secure-esp32-sbv1` (Secure Boot, flash encryption release
+  mode, NVS encryption), built in CI only; threat model and hardening guide; nightly fuzzing.
 - Hardware-in-the-loop runner `tools/hil/pt_hil.py` and measurements in `docs/measurements.md`.
 - Host harness `tangd-host` and `tools/interop.sh`: clevis round-trips, rotation, upstream cross-check,
   sss and LUKS2 bind/unlock; run in CI.
