@@ -1,0 +1,25 @@
+# Pocket Tang C style (clang-format 18)
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++17
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Linux
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AlignConsecutiveMacros: Consecutive
+AlignTrailingComments: true
+PointerAlignment: Right
+SpaceAfterCStyleCast: false
+IncludeBlocks: Preserve
+SortIncludes: CaseSensitive
+BinPackParameters: true
+BinPackArguments: true
+AlwaysBreakAfterReturnType: None
+IndentCaseLabels: false
+ReflowComments: true
+InsertNewlineAtEOF: true

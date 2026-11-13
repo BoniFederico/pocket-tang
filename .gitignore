@@ -53,3 +53,32 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# --- pocket-tang ---
+.env.test
+.env
+build/
+build-*/
+out/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+managed_components/
+.venv/
+__pycache__/
+*.pyc
+site/
+coverage/
+*.gcda
+*.gcno
+*.profraw
+*.profdata
+crash-*
+leak-*
+timeout-*
+.cache/
+compile_commands.json
+.idea/
+.vscode/settings.json
+*.log
+hil-artifacts/

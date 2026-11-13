@@ -1,0 +1,30 @@
+name: Bug report
+description: Something does not work as documented
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Firmware version
+      description: Output of `curl http://<device>/version` or the release tag
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Target
+      options: [esp32, esp32c3, esp32s3, host (tangd-host), other]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Steps to reproduce, expected and actual behaviour. Never paste private keys or Wi-Fi passwords.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Serial log / client output
+      render: text
