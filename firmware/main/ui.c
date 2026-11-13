@@ -557,10 +557,12 @@ static void do_login(const pt_srv_request_t *req, pt_srv_response_t *resp)
         return;
     }
     ESP_LOGI(TAG, "admin login from %s", req->peer);
+    /* Browser-session cookie (no Max-Age): the 10-minute inactivity expiry is enforced on the
+     * server, which slides it on every authorised action. */
     snprintf(s_hdrs, sizeof(s_hdrs),
              "Location: /admin\r\nSet-Cookie: " PT_SESSION_COOKIE
-             "=%s; Path=/admin; Max-Age=%d; HttpOnly; SameSite=Strict\r\n%s",
-             cookie, SESSION_TTL_S, SEC_HEADERS);
+             "=%s; Path=/admin; HttpOnly; SameSite=Strict\r\n%s",
+             cookie, SEC_HEADERS);
     pt_zeroize(cookie, sizeof(cookie));
     resp->status = 303;
     resp->headers = s_hdrs;

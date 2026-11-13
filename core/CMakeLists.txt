@@ -33,6 +33,9 @@ target_link_libraries(pt_core PRIVATE pt_warnings PUBLIC mbedcrypto)
 # BSD socket extensions (MSG_DONTWAIT, TCP_NODELAY) for net/pt_server.c on glibc.
 set_source_files_properties(net/pt_server.c PROPERTIES COMPILE_DEFINITIONS _DEFAULT_SOURCE)
 target_compile_definitions(pt_core PUBLIC PT_CORE_HOST_BUILD=1)
+if(DEFINED ENV{PT_VERSION})
+    target_compile_definitions(pt_core PUBLIC PT_VERSION="$ENV{PT_VERSION}")
+endif()
 
 if(BUILD_TESTING)
     add_subdirectory(tests)

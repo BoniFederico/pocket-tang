@@ -9,8 +9,13 @@
 extern "C" {
 #endif
 
-/** Semantic version of Pocket Tang, e.g. "1.0.0" or "1.0.0-dev+abc1234". */
-#define PT_VERSION "0.1.0-dev"
+/**
+ * Semantic version of Pocket Tang, e.g. "1.0.0" or "1.0.0-dev". Release builds set it from the
+ * git tag (environment variable PT_VERSION, see tools/fw-build.sh and CMakeLists.txt).
+ */
+#ifndef PT_VERSION
+#define PT_VERSION "1.0.0-dev"
+#endif
 
 /**
  * @brief Return the version string.

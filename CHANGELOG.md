@@ -7,6 +7,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-13
+
+First stable release.
+
 ### Added
 - Repository scaffolding, contribution guidelines, security policy, issue and PR templates.
 - ADR-0001 (ESP-IDF v5.5 with Mbed TLS 3.6) and ADR-0002 (own strict JSON parser).
@@ -33,6 +37,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (PBKDF2 password, CSRF, back-off, CSP), BOOT button (setup / factory reset) and LED patterns.
 - Hardening profiles `secure-sbv2` and `secure-esp32-sbv1` (Secure Boot, flash encryption release
   mode, NVS encryption), built in CI only; threat model and hardening guide; nightly fuzzing.
+- Documentation site (MkDocs Material) with user guide, lecture-style design notes and an ESP Web
+  Tools browser flasher; release workflow publishing merged images and checksums.
 - Hardware-in-the-loop runner `tools/hil/pt_hil.py` and measurements in `docs/measurements.md`.
 - Host harness `tangd-host` and `tools/interop.sh`: clevis round-trips, rotation, upstream cross-check,
   sss and LUKS2 bind/unlock; run in CI.
+
+[Unreleased]: https://github.com/BoniFederico/pocket-tang/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/BoniFederico/pocket-tang/releases/tag/v1.0.0

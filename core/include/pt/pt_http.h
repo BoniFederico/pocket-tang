@@ -3,7 +3,7 @@
  * @brief Minimal, strict, bounded HTTP/1.1 request-head parser and response-head writer.
  *
  * Used by platform layers that do not have an HTTP server of their own (the host harness, the
- * future Raspberry Pi Pico layer). The ESP32 layer uses esp_http_server instead.
+ * future Raspberry Pi Pico layer) through pt_server, which the ESP32 layer also uses (ADR-0004).
  *
  * Only what a Tang server needs is supported: a request line, headers, and an optional body
  * framed by Content-Length. Chunked transfer coding, obsolete line folding, absolute-form targets

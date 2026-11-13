@@ -36,18 +36,28 @@ py tools/hil/pt_hil.py --port COM3 --url http://192.168.1.214 stress --seconds 3
 py tools/hil/pt_hil.py --port COM3 --url http://192.168.1.214 interop
 py tools/hil/pt_hil.py --port COM3 --url http://192.168.1.214 persistence
 py tools/hil/pt_hil.py --port COM3 --url http://192.168.1.214 rotation
+py tools/hil/pt_hil.py --port COM3 --url http://192.168.1.214 button          # BOOT via DTR
+py tools/hil/pt_hil.py --port COM3 --url http://192.168.1.214 ui              # admin page over LAN
+py tools/hil/pt_hil.py --port COM3 --url http://192.168.1.214 factory-reset   # wipes keys!
 ```
+
+`flash` refuses any build whose `sdkconfig` enables Secure Boot or flash encryption, because those
+images burn eFuses irreversibly on first boot.
 
 The `all` step sequence is:
 
 1. Read-only chip identification (`esptool chip-id`).
-2. Full flash erase, then flashing of the test build.
-3. Provisioning over the serial console, followed by a reboot. It waits for the `PT_READY ip=...` line.
-4. `/rec` and `/adv` latency (client side) and device statistics (crypto time, heap, stack high-water marks).
-5. `tools/interop.sh --url`: clevis round-trip, `sss` across the board and a local upstream tangd, and the status-code matrix compared with upstream.
-6. Stress: concurrent valid and hostile requests plus a slow client. The board must keep answering and its heap must stay stable.
-7. Reboot persistence: the same thumbprints are advertised after a reboot.
-8. Rotation: bind with clevis, rotate on the device, then check that the old binding still decrypts.
+2. Full flash erase, then flashing of the test build (with the eFuse guard above).
+3. Provisioning over the serial console, followed by a reboot. It waits for the `PT_READY mode=… ip=…` line.
+4. Device statistics after boot.
+5. `/rec` and `/adv` latency (client side) and device statistics (crypto time, heap, stack high-water marks).
+6. `tools/interop.sh --url`: clevis round-trip, `sss` across the board and a local upstream tangd, and the status-code matrix compared with upstream.
+7. Stress: concurrent valid and hostile requests plus a slow client. The board must keep answering and its heap must stay stable.
+8. Reboot persistence: the same thumbprints are advertised after a reboot.
+9. Rotation: bind with clevis, rotate on the device, then check that the old binding still decrypts.
+10. Button via DTR: a 4.5 s hold enters setup mode, Tang keeps answering, and a reboot returns to normal mode.
+11. Admin UI over the LAN: login back-off, cookie flags, CSRF rejection, rotation, the recovery lock (`/rec` 403/200), confirmation for factory reset, logout.
+12. Factory reset via an 11 s hold: keys and settings erased, device unprovisioned, then reprovisioned with new keys.
 
 Results go to `hil-artifacts/` (git-ignored): `hil-results.json`, `serial.log` (the Wi-Fi password is
 redacted) and `interop.log`.

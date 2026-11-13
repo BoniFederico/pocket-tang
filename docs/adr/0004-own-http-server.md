@@ -38,7 +38,8 @@ anyway, so this also removes a platform dependency.
   573 ms, and the stress test went from 12 to 415 successful responses with zero connection
   errors (see `docs/measurements.md`).
 - About 24 KB of static RAM for connection buffers (6 × 4 KB). Free heap is still about 146 KB.
-- Requests are handled synchronously on the server task. A `/rec` (about 0.55 s of crypto)
+- Requests are handled synchronously by the server task. For Tang requests the task hands the
+  work to the crypto worker and waits for it (clarified after acceptance; behaviour unchanged). A `/rec` (about 0.55 s of crypto)
   delays other complete requests but cannot be used to hold connections, because incomplete
   requests time out independently. No keep-alive and no chunked encoding, which Tang clients
   do not need.

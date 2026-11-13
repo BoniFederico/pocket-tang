@@ -169,18 +169,20 @@ static void normal_mode(void)
     ui_init(&s_cfg, false);
     pt_httpd_set_ui(ui_handle, NULL, NULL, s_cfg.lan_admin);
     ESP_ERROR_CHECK(pt_httpd_start(s_cfg.port, 0));
-    if (!pt_wifi_wait_ip(30000)) {
-        ESP_LOGW(TAG, "no IP address yet; will keep retrying");
-    }
     if (pt_mdns_start(s_cfg.hostname, s_cfg.port) != ESP_OK) {
         ESP_LOGW(TAG, "mDNS failed to start");
     }
+    /* Report readiness once an address is obtained (the station keeps retrying with backoff;
+     * Tang is served as soon as the network is up). */
     char ip[16];
-    pt_wifi_ip(ip, sizeof(ip));
-    ESP_LOGI(TAG, "PT_READY mode=normal ip=%s port=%u host=%s.local", ip, s_cfg.port,
-             s_cfg.hostname);
+    bool announced = false;
     for (;;) {
         pt_wifi_ip(ip, sizeof(ip));
+        if (ip[0] != '\0' && !announced) {
+            ESP_LOGI(TAG, "PT_READY mode=normal ip=%s port=%u host=%s.local", ip, s_cfg.port,
+                     s_cfg.hostname);
+            announced = true;
+        }
         pt_led_set(ip[0] ? PT_LED_NORMAL : PT_LED_CONNECTING);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
