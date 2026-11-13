@@ -1,6 +1,9 @@
 # Portable Pocket Tang core. No ESP-IDF, no FreeRTOS, no dynamic allocation in the request path.
 add_library(pt_core STATIC
     src/pt_version.c
+    src/pt_common.c
+    src/pt_b64url.c
+    src/pt_json.c
 )
 target_include_directories(pt_core PUBLIC include)
 target_link_libraries(pt_core PRIVATE pt_warnings)
