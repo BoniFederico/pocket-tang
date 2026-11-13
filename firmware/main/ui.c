@@ -35,6 +35,9 @@
 #include "pt/pt_version.h"
 #include "pt/pt_web.h"
 #include "sdkconfig.h"
+#if CONFIG_PT_MQTT
+#include "pt_mqtt.h"
+#endif
 
 static const char *TAG = "pt_ui";
 
@@ -326,6 +329,23 @@ static void setup_form(bool initial)
     out("<label><input type=checkbox name=lanadmin value=1 %s> Allow the admin page on the "
         "LAN at http://%s.local/admin (plain HTTP: see the security notes)</label>",
         s_cfg->lan_admin ? "checked" : "", s_cfg->hostname);
+#if CONFIG_PT_MQTT
+    out("<h2>Home Assistant (MQTT, optional)</h2>"
+        "<label><input type=checkbox name=mqtt_on value=1 %s> Publish events and sensors to an "
+        "MQTT broker (Home Assistant discovery)</label>"
+        "<label for=mqtt_uri>Broker URI (mqtts://host:8883 recommended)</label>"
+        "<input id=mqtt_uri name=mqtt_uri maxlength=128 placeholder=\"mqtts://broker.lan:8883\" "
+        "value=\"",
+        s_cfg->mqtt_enabled ? "checked" : "");
+    out_text(s_cfg->mqtt_uri);
+    out("\"><label for=mqtt_user>MQTT user</label>"
+        "<input id=mqtt_user name=mqtt_user maxlength=64 autocomplete=off value=\"");
+    out_text(s_cfg->mqtt_user);
+    out("\"><label for=mqtt_pass>MQTT password</label>"
+        "<input id=mqtt_pass name=mqtt_pass type=password maxlength=64 autocomplete=off "
+        "placeholder=\"%s\">",
+        s_cfg->mqtt_pass[0] ? "unchanged if empty" : "");
+#endif
     out("<button type=submit>Save and restart</button></form>");
 }
 
@@ -382,6 +402,21 @@ static void dashboard(const pt_srv_request_t *req, bool on_ap, const char *msg, 
     setup_form(false);
     out("</section>");
 
+#if CONFIG_PT_MQTT
+    {
+        static char ca[PT_MQTT_CA_MAX];
+        size_t ca_len = 0;
+        bool has_ca = pt_store_load_mqtt_ca(ca, sizeof(ca), &ca_len) == ESP_OK;
+        out("<section><h2>MQTT broker CA certificate</h2><p class=note>For mqtts:// brokers "
+            "with a private CA. Paste the CA certificate (PEM). %s Leave empty and save to remove "
+            "it and use the public certificate bundle.</p><form method=post action=/admin/mqtt-ca>",
+            has_ca ? "<b>A CA is configured.</b>" : "No CA configured.");
+        csrf_field();
+        out("<textarea name=ca rows=6 style=\"width:100%%;font-family:monospace\" "
+            "placeholder=\"-----BEGIN CERTIFICATE-----\"></textarea>"
+            "<button>Save CA</button></form></section>");
+    }
+#endif
     out("<section><h2>Device</h2><form method=post action=/admin/reboot>");
     csrf_field();
     out("<button>%s</button></form>", s_setup_mode ? "Leave setup mode (restart)" : "Restart");
@@ -498,6 +533,27 @@ static const char *do_setup(const pt_srv_request_t *req, bool initial)
         c.port = (uint16_t)port;
         c.lan_admin = lan[0] == '1';
         c.provisioned = true;
+#if CONFIG_PT_MQTT
+        char mon[4] = "";
+        char muri[sizeof(c.mqtt_uri)] = "";
+        char muser[sizeof(c.mqtt_user)] = "";
+        char mpass[sizeof(c.mqtt_pass)] = "";
+        (void)form(req, "mqtt_on", mon, sizeof(mon));
+        (void)form(req, "mqtt_uri", muri, sizeof(muri));
+        (void)form(req, "mqtt_user", muser, sizeof(muser));
+        (void)form(req, "mqtt_pass", mpass, sizeof(mpass));
+        c.mqtt_enabled = mon[0] == '1';
+        if (c.mqtt_enabled && strncmp(muri, "mqtt://", 7) != 0 &&
+            strncmp(muri, "mqtts://", 8) != 0) {
+            err = "MQTT broker URI must start with mqtt:// or mqtts://.";
+        }
+        strlcpy(c.mqtt_uri, muri, sizeof(c.mqtt_uri));
+        strlcpy(c.mqtt_user, muser, sizeof(c.mqtt_user));
+        if (mpass[0] != '\0') {
+            strlcpy(c.mqtt_pass, mpass, sizeof(c.mqtt_pass));
+        }
+        pt_zeroize(mpass, sizeof(mpass));
+#endif
         if (a1[0] != '\0') {
             pt_pw_t v;
             if (pt_pw_set(&v, a1, strlen(a1), PT_PW_ITER_DEFAULT) != PT_OK) {
@@ -679,6 +735,9 @@ void ui_handle(void *ctx, const pt_srv_request_t *req, pt_srv_response_t *resp, 
             op.lock = lock[0] == '1';
             s_cfg->locked = op.lock;
             pt_store_save_config(s_cfg);
+#if CONFIG_PT_MQTT
+            pt_mqtt_lock_changed(op.lock);
+#endif
         }
         if (pt_worker_run(key_op_job, &op) != ESP_OK) {
             op.result = ESP_ERR_TIMEOUT;
@@ -697,6 +756,34 @@ void ui_handle(void *ctx, const pt_srv_request_t *req, pt_srv_response_t *resp, 
         page_end(resp, 200);
         return;
     }
+#if CONFIG_PT_MQTT
+    if (path_is(req, "/admin/mqtt-ca")) {
+        static char ca[PT_MQTT_CA_MAX];
+        const char *msg = NULL;
+        size_t n = 0;
+        pt_err_t perr =
+            pt_form_get_multiline((const char *)req->body, req->body_len, "ca", ca, sizeof(ca), &n);
+        if (perr == PT_ERR_NOTFOUND) {
+            ca[0] = '\0';
+            perr = PT_OK;
+        }
+        if (perr != PT_OK) {
+            msg = "Certificate too large or malformed.";
+        } else if (n > 0 && strstr(ca, "-----BEGIN CERTIFICATE-----") == NULL) {
+            msg = "Not a PEM certificate.";
+        } else if (pt_store_save_mqtt_ca(ca) != ESP_OK) {
+            msg = "Saving the certificate failed.";
+        }
+        if (msg == NULL) {
+            s_last_change_s = now_s();
+        }
+        dashboard(req, on_ap,
+                  msg ? msg : (n ? "CA saved; restart to apply." : "CA removed; restart to apply."),
+                  msg == NULL);
+        page_end(resp, msg ? 400 : 200);
+        return;
+    }
+#endif
     if (path_is(req, "/admin/reboot")) {
         page_begin("Restarting");
         out("<section><p class=ok>Restarting...</p></section>");

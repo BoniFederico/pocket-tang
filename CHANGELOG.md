@@ -7,6 +7,22 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-13
+
+### Added
+- Optional MQTT integration with Home Assistant device discovery (Kconfig `CONFIG_PT_MQTT`,
+  runtime toggle off by default): unlock/denied event entity, sensors (last unlock, last client,
+  counters, RSSI, uptime, firmware version, key thumbprints), persisted recovery-lock switch,
+  restart button; availability via last will; re-discovery on Home Assistant birth (ADR-0005).
+- MQTT over TLS with the certificate bundle or a private CA uploaded on the admin page.
+- `pt_form_get_multiline()` for textarea fields (CR/LF only).
+- HIL step `mqtt` (discovery, events, lock, LWT, restart button, latency with MQTT on/off).
+
+### Changed
+- mbedTLS dynamic record buffers: a connected TLS session costs ~24 KB of heap instead of ~69 KB.
+- The LED blips on each successful recovery.
+
+
 ## [1.0.0] - 2026-11-13
 
 First stable release.
@@ -43,5 +59,6 @@ First stable release.
 - Host harness `tangd-host` and `tools/interop.sh`: clevis round-trips, rotation, upstream cross-check,
   sss and LUKS2 bind/unlock; run in CI.
 
-[Unreleased]: https://github.com/BoniFederico/pocket-tang/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/BoniFederico/pocket-tang/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/BoniFederico/pocket-tang/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/BoniFederico/pocket-tang/releases/tag/v1.0.0

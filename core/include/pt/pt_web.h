@@ -36,6 +36,13 @@ pt_err_t pt_form_get(const char *body, size_t len, const char *name, char *out, 
                      size_t *out_len);
 
 /**
+ * @brief Like pt_form_get() but also accepts CR and LF in the value (textarea fields such as a
+ *        PEM certificate). All other control characters are still rejected.
+ */
+pt_err_t pt_form_get_multiline(const char *body, size_t len, const char *name, char *out,
+                               size_t cap, size_t *out_len);
+
+/**
  * @brief HTML-escape @p in (`&`, `<`, `>`, `"`, `'`) into @p out (NUL-terminated).
  * @return PT_OK or PT_ERR_NOSPACE.
  */

@@ -121,6 +121,13 @@ Everything that touches ESP-IDF lives here, behind `pt_esp.h`. The application i
 | `pt_dnsd` | `pt_dnsd_start()` | 4 | 3072 | captive DNS, setup mode only |
 | `pt_button` | `pt_button_start()` | 3 | 3072 | button timing and actions |
 | `pt_restart` | `ui.c` | 2 | 2048 | delayed restart after an admin action |
+| esp-mqtt client | `pt_mqtt_start()` | 2 | 6144 | MQTT connection, TLS, incoming commands (only when enabled) |
+| `pt_mqtt_pub` | `pt_mqtt_start()` | 1 | 4096 | events, state, discovery publishing (only when enabled) |
+
+The MQTT integration (`firmware/components/pt_mqtt/`, [ADR-0005](../adr/0005-mqtt-home-assistant.md))
+is wired to the Tang path through a single listener, `pt_events_set_listener()`. The worker calls
+it after each recovery, and it does one non-blocking `xQueueSend` into an 8-entry queue. All
+network work happens on the two lowest-priority tasks above.
 
 The Wi-Fi driver, lwIP and the esp_timer service run in their own ESP-IDF tasks. The worker sits
 above the HTTP task, so that accepted crypto work finishes quickly, and below Wi-Fi and lwIP

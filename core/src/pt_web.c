@@ -22,8 +22,10 @@ static int hexval(char c)
     return -1;
 }
 
-/* Decode an urlencoded component; out may be NULL to only compare/validate. */
-static pt_err_t decode(const char *in, size_t n, char *out, size_t cap, size_t *out_len)
+/* Decode an urlencoded component; out may be NULL to only compare/validate. Multi-line values
+ * (textarea) may additionally contain CR and LF. */
+static pt_err_t decode_ex(const char *in, size_t n, char *out, size_t cap, size_t *out_len,
+                          bool multiline)
 {
     size_t o = 0;
     for (size_t i = 0; i < n; i++) {
@@ -42,7 +44,8 @@ static pt_err_t decode(const char *in, size_t n, char *out, size_t cap, size_t *
             c = (unsigned char)(hi * 16 + lo);
             i += 2;
         }
-        if (c == 0 || (c < 0x20 && c != '\t') || c == 0x7F) {
+        bool newline = multiline && (c == '\r' || c == '\n');
+        if (c == 0 || (c < 0x20 && c != '\t' && !newline) || c == 0x7F) {
             return PT_ERR_INVALID;
         }
         if (out != NULL) {
@@ -62,6 +65,11 @@ static pt_err_t decode(const char *in, size_t n, char *out, size_t cap, size_t *
     return PT_OK;
 }
 
+static pt_err_t decode(const char *in, size_t n, char *out, size_t cap, size_t *out_len)
+{
+    return decode_ex(in, n, out, cap, out_len, false);
+}
+
 /* Compare an encoded key with a plain name. */
 static bool key_matches(const char *k, size_t kn, const char *name)
 {
@@ -73,8 +81,8 @@ static bool key_matches(const char *k, size_t kn, const char *name)
     return tl == strlen(name) && memcmp(tmp, name, tl) == 0;
 }
 
-pt_err_t pt_form_get(const char *body, size_t len, const char *name, char *out, size_t cap,
-                     size_t *out_len)
+static pt_err_t form_get(const char *body, size_t len, const char *name, char *out, size_t cap,
+                         size_t *out_len, bool multiline)
 {
     if (body == NULL || name == NULL || out == NULL || cap == 0) {
         return PT_ERR_INVALID;
@@ -107,7 +115,19 @@ pt_err_t pt_form_get(const char *body, size_t len, const char *name, char *out, 
     if (val == NULL) {
         return PT_ERR_NOTFOUND;
     }
-    return decode(val, vlen, out, cap, out_len);
+    return decode_ex(val, vlen, out, cap, out_len, multiline);
+}
+
+pt_err_t pt_form_get(const char *body, size_t len, const char *name, char *out, size_t cap,
+                     size_t *out_len)
+{
+    return form_get(body, len, name, out, cap, out_len, false);
+}
+
+pt_err_t pt_form_get_multiline(const char *body, size_t len, const char *name, char *out,
+                               size_t cap, size_t *out_len)
+{
+    return form_get(body, len, name, out, cap, out_len, true);
 }
 
 pt_err_t pt_html_escape(const char *in, char *out, size_t cap)

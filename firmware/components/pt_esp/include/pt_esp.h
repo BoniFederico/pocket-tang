@@ -39,8 +39,12 @@ typedef struct pt_config {
     uint8_t admin_salt[16];
     uint8_t admin_hash[32]; /**< PBKDF2-HMAC-SHA256(password, salt) */
     uint32_t admin_iter;
-    bool locked;    /**< /rec kill switch (persisted) */
-    bool lan_admin; /**< admin UI reachable in normal mode */
+    bool locked;        /**< /rec kill switch (persisted) */
+    bool lan_admin;     /**< admin UI reachable in normal mode */
+    bool mqtt_enabled;  /**< MQTT / Home Assistant integration on (runtime toggle) */
+    char mqtt_uri[129]; /**< mqtt://host:1883 or mqtts://host:8883 */
+    char mqtt_user[65];
+    char mqtt_pass[65];
 } pt_config_t;
 
 /** @brief Initialise NVS (erasing it only if the partition layout is incompatible). */
@@ -55,6 +59,14 @@ esp_err_t pt_store_load_keys(uint8_t *blob, size_t cap, size_t *len);
 esp_err_t pt_store_save_keys(const uint8_t *blob, size_t len);
 /** @brief Erase keys, configuration and statistics (factory reset). */
 esp_err_t pt_store_factory_reset(void);
+
+/** Maximum size of a custom MQTT broker CA certificate (PEM, including NUL). */
+#define PT_MQTT_CA_MAX 2048
+
+/** @brief Load the custom MQTT CA (PEM). ESP_ERR_NOT_FOUND if none is configured. */
+esp_err_t pt_store_load_mqtt_ca(char *pem, size_t cap, size_t *len);
+/** @brief Store a custom MQTT CA (PEM); an empty string removes it. */
+esp_err_t pt_store_save_mqtt_ca(const char *pem);
 
 /** Length of the setup access-point password. */
 #define PT_SETUP_PW_LEN 12
@@ -152,7 +164,17 @@ typedef struct pt_stats {
 /** @brief Snapshot the statistics (thread safe). */
 void pt_stats_get(pt_stats_t *out);
 /** @brief Record a Tang event (called from the worker). */
-void pt_stats_event(pt_tang_event_t ev, int status, const char *client, uint32_t crypto_us);
+void pt_stats_event(pt_tang_event_t ev, int status, const char *client, const char *kid,
+                    uint32_t crypto_us);
+
+/**
+ * Listener for Tang events (used by the MQTT integration). Called on the crypto worker right
+ * after the event; it must not block (enqueue and return).
+ */
+typedef void (*pt_event_listener_fn)(pt_tang_event_t ev, int status, const char *client,
+                                     const char *kid);
+/** @brief Register the (single) event listener; NULL removes it. */
+void pt_events_set_listener(pt_event_listener_fn fn);
 /** @brief Record a 503. */
 void pt_stats_busy(void);
 /** @brief Record the HTTP task's stack high-water mark. */

@@ -316,6 +316,32 @@ bytes, matches upstream and is checked in CI.
   and in the test profile all functions are stack-checked, with light heap poisoning and an
   end-of-stack watchpoint.
 
+## 14. MQTT and Home Assistant without touching the Tang path
+
+**Requirement.** Report unlocks and denials to Home Assistant, accept a "lock" switch and a
+restart button, support TLS, never publish key material, and never slow down `/rec`
+([ADR-0005](../adr/0005-mqtt-home-assistant.md)).
+
+**Alternatives considered.**
+
+| Option | Problem |
+|--------|---------|
+| Publish from the crypto worker right after a recovery | The worker would wait on the network and the broker. A slow or unreachable broker would stall recoveries. |
+| Queue into the esp-mqtt outbox (`esp_mqtt_client_enqueue`) | Never blocks, but the outbox drained more slowly than it filled during bursts. Only 77 of 150 events arrived in the hardware test. |
+| **Non-blocking queue, then a low-priority publisher task that publishes directly** | Chosen. The worker does one `xQueueSend(..., 0)`. All network I/O happens on priority 1–2 tasks, and state messages are coalesced to one per second. |
+
+**Discovery.** Home Assistant device-based discovery: a single message carrying all 12 components.
+It is not retained, as Home Assistant recommends, and is re-sent when `homeassistant/status` reports
+`online`. Availability uses the broker's last will.
+
+**TLS.** A private CA, pasted on the admin page and stored in NVS, overrides the public
+certificate bundle. Verification can never be disabled. Enabling mbedTLS dynamic record buffers
+cut the heap cost of a connected TLS session from about 69 KB to about 24 KB.
+
+**Evidence.** Hardware measurements in [Measurements](../measurements.md#mqtt-and-home-assistant):
+`/rec` p50 584.5 ms with MQTT over TLS versus 584.8 ms without, and unchanged with an
+unreachable broker. All 150 events were delivered.
+
 ## References
 
 1. Pocket Tang ADRs [0001](../adr/0001-esp-idf-version-and-crypto-stack.md),

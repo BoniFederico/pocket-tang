@@ -44,11 +44,14 @@ static void tang_job_fn(void *arg)
     uint32_t us = (uint32_t)(esp_timer_get_time() - t0);
     if (j->req->route == PT_ROUTE_REC) {
         pt_stats_event(j->resp.status == 200 ? PT_EV_REC_OK : PT_EV_REC_DENIED, j->resp.status,
-                       j->client, us);
+                       j->client, j->req->kid, us);
+        if (j->resp.status == 200) {
+            pt_led_blip();
+        }
         ESP_LOGI(TAG, "rec %s from %s -> %d (%lu us)", j->req->kid, j->client, j->resp.status,
                  (unsigned long)us);
     } else if (j->req->route == PT_ROUTE_ADV || j->req->route == PT_ROUTE_ADV_KID) {
-        pt_stats_event(PT_EV_ADV, j->resp.status, j->client, us);
+        pt_stats_event(PT_EV_ADV, j->resp.status, j->client, j->req->kid, us);
     }
 }
 

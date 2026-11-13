@@ -24,6 +24,9 @@
 #include "pt_esp.h"
 #include "sdkconfig.h"
 #include "ui.h"
+#if CONFIG_PT_MQTT
+#include "pt_mqtt.h"
+#endif
 
 static const char *TAG = "pocket-tang";
 
@@ -89,6 +92,27 @@ static void set_lock_job(void *arg)
 {
     pt_tang_set_locked(pt_engine(), *(bool *)arg);
 }
+
+#if CONFIG_PT_MQTT
+/* Hooks for the MQTT integration (called on its task). */
+static void mqtt_set_lock(bool locked)
+{
+    s_cfg.locked = locked;
+    pt_worker_run(set_lock_job, &s_cfg.locked);
+    pt_store_save_config(&s_cfg);
+}
+
+static bool mqtt_get_lock(void)
+{
+    return s_cfg.locked;
+}
+
+static void mqtt_restart(void)
+{
+    vTaskDelay(pdMS_TO_TICKS(500));
+    esp_restart();
+}
+#endif
 
 static void on_button(pt_button_action_t action)
 {
@@ -182,6 +206,13 @@ static void normal_mode(void)
             ESP_LOGI(TAG, "PT_READY mode=normal ip=%s port=%u host=%s.local", ip, s_cfg.port,
                      s_cfg.hostname);
             announced = true;
+#if CONFIG_PT_MQTT
+            static const pt_mqtt_hooks_t hooks = {
+                .set_lock = mqtt_set_lock, .get_lock = mqtt_get_lock, .restart = mqtt_restart};
+            if (pt_mqtt_start(&s_cfg, &hooks) != ESP_OK) {
+                ESP_LOGW(TAG, "MQTT integration failed to start");
+            }
+#endif
         }
         pt_led_set(ip[0] ? PT_LED_NORMAL : PT_LED_CONNECTING);
         vTaskDelay(pdMS_TO_TICKS(1000));

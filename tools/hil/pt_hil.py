@@ -225,7 +225,7 @@ def step_flash(args) -> None:
     fa = json.loads((bdir / "flasher_args.json").read_text())
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="pt-fw-"))
     cmd = [sys.executable, "-m", "esptool", "--chip", fa["extra_esptool_args"]["chip"],
-           "--port", args.port, "--baud", "921600", "--before", "default-reset",
+           "--port", args.port, "--baud", "460800", "--before", "default-reset",
            "--after", "hard-reset", "write-flash"]
     cmd += [a for a in fa["write_flash_args"]]
     for off, rel in sorted(fa["flash_files"].items(), key=lambda kv: int(kv[0], 16)):
@@ -237,7 +237,10 @@ def step_flash(args) -> None:
         subprocess.run([sys.executable, "-m", "esptool", "--port", args.port, "erase-flash"],
                        check=True, timeout=120)
     log("flashing " + " ".join(cmd[cmd.index("write-flash") + 1:]))
-    subprocess.run(cmd, check=True, timeout=300)
+    # CP210x links occasionally drop at high baud rates; one retry is cheap and safe.
+    if subprocess.run(cmd, timeout=300).returncode != 0:
+        log("flashing failed, retrying once")
+        subprocess.run(cmd, check=True, timeout=300)
 
 
 def step_provision(board: Board, env: dict, args) -> str:
@@ -455,6 +458,74 @@ def step_factory_reset(board: Board, env: dict, args, base: str) -> dict:
     return res
 
 
+def step_mqtt(board: Board, base: str, broker: str, n: int = 100) -> dict:
+    """MQTT / Home Assistant: discovery, events, birth re-announce, lock switch, LWT, restart
+    button, and /rec latency with MQTT on vs off (non-interference). Plain MQTT on port 1883."""
+    import mqtt_test
+    res: dict = {}
+    dev = base.split("//")[1].split(":")[0]
+    board.command(f"mqtt mqtt://{broker}:1883", r"PT_MQTT_CFG (\S+)", 10)
+    sn = mqtt_test.Sniffer(broker, 1883, ("pocket-tang/#", "homeassistant/#"))
+    t0 = time.time()
+    board.command("reboot", r"PT_REBOOT", 5)
+    res["connected"] = board.readline_until(r"PT_MQTT connected", 60) is not None
+    d = sn.wait(lambda m: m[2].startswith("homeassistant/device/"), 15, t0)
+    res["discovery"] = mqtt_test.check_discovery(d[3]) if d else None
+    avty = res["discovery"]["availability_topic"] if d else ""
+    prefix = avty.rsplit("/", 1)[0]
+    body = json.dumps(CLIENT_JWK).encode()
+    kid = exchange_kid(base)
+    t1 = time.time()
+    http("POST", f"{base}/rec/{kid}", body)
+    http("POST", f"{base}/rec/AAAA", body)
+    time.sleep(3)  # events are published asynchronously by the low-priority MQTT task
+    res["events"] = sorted(json.loads(m[3])["event_type"]
+                           for m in sn.since(t1, lambda t: t == prefix + "/event")) if prefix else []
+    time.sleep(2)
+    t2 = time.time()
+    mqtt_test.pub(broker, "homeassistant/status", "online")
+    res["rediscovery"] = sn.wait(lambda m: m[2].startswith("homeassistant/device/"), 10, t2) is not None
+    mqtt_test.pub(broker, prefix + "/lock/set", "ON")
+    time.sleep(1.5)
+    res["rec_locked"] = http("POST", f"{base}/rec/{kid}", body)[0]
+    mqtt_test.pub(broker, prefix + "/lock/set", "OFF")
+    time.sleep(1.5)
+    res["rec_unlocked"] = http("POST", f"{base}/rec/{kid}", body)[0]
+    time.sleep(3)
+    # Non-interference: latency with MQTT on (every recovery publishes an event)
+    t3 = time.time()
+    on = step_latency(base, n)["rec_ms"]
+    time.sleep(3)
+    res["events_delivered"] = f"{len(sn.since(t3, lambda t: t == prefix + '/event'))}/{n}"
+    # LWT on an abrupt reset, then the restart button
+    t4 = time.time()
+    board.reset()
+    off_msg = sn.wait(lambda m: m[2] == avty and m[3] == "offline", 70, t4)
+    res["lwt_offline_s"] = round(off_msg[0] - t4, 1) if off_msg else None
+    board.readline_until(r"PT_MQTT connected", 60)
+    time.sleep(3)
+    mqtt_test.pub(broker, prefix + "/restart", "PRESS")
+    res["restart_button"] = board.readline_until(r"PT_READY mode=normal", 45) is not None
+    res["no_private_material"] = all('"d"' not in m[3] for m in sn.since(t0))
+    sn.close()
+    # MQTT off
+    board.command(f"mqtt mqtt://{broker}:1883 --off", r"PT_MQTT_CFG (\S+)", 10)
+    board.command("reboot", r"PT_REBOOT", 5)
+    board.readline_until(r"MQTT integration disabled|PT_READY mode=normal", 45)
+    time.sleep(10)
+    off = step_latency(base, n)["rec_ms"]
+    res["rec_ms_mqtt_on"] = on
+    res["rec_ms_mqtt_off"] = off
+    res["passed"] = (res["connected"] and bool(res["discovery"])
+                     and res["discovery"]["components_present"] and res["events"] == ["denied", "unlock"]
+                     and res["rediscovery"] and res["rec_locked"] == 403 and res["rec_unlocked"] == 200
+                     and res["events_delivered"] == f"{n}/{n}" and res["restart_button"]
+                     and res["no_private_material"] and res["lwt_offline_s"] is not None)
+    log(f"mqtt: {res}")
+    _ = dev
+    return res
+
+
 def write_report(results: dict) -> None:
     ART.mkdir(exist_ok=True)
     (ART / "hil-results.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
@@ -487,6 +558,9 @@ def main() -> int:
     sub.add_parser("ui")
     sub.add_parser("button")
     sub.add_parser("factory-reset")
+    mq = sub.add_parser("mqtt")
+    mq.add_argument("--broker", required=True, help="broker IPv4 reachable from the board")
+    mq.add_argument("-n", type=int, default=100)
     al = sub.add_parser("all")
     al.add_argument("--build-dir")
     al.add_argument("-n", type=int, default=50)
@@ -560,6 +634,10 @@ def main() -> int:
             step_rotation(board, base)
         elif args.cmd == "ui":
             return 0 if step_ui(board, base)["passed"] else 1
+        elif args.cmd == "mqtt":
+            r = step_mqtt(board, base, args.broker, args.n)
+            write_report({"mqtt": r})
+            return 0 if r["passed"] else 1
         elif args.cmd == "factory-reset":
             return 0 if step_factory_reset(board, env, args, base)["passed"] else 1
         elif args.cmd == "button":

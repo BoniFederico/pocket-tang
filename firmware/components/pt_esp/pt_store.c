@@ -58,6 +58,10 @@ esp_err_t pt_store_load_config(pt_config_t *cfg)
     uint8_t u8 = 0;
     cfg->locked = nvs_get_u8(h, "locked", &u8) == ESP_OK && u8 != 0;
     cfg->lan_admin = nvs_get_u8(h, "lanadmin", &u8) == ESP_OK && u8 != 0;
+    cfg->mqtt_enabled = nvs_get_u8(h, "mqtt_on", &u8) == ESP_OK && u8 != 0;
+    get_str(h, "mqtt_uri", cfg->mqtt_uri, sizeof(cfg->mqtt_uri), "");
+    get_str(h, "mqtt_user", cfg->mqtt_user, sizeof(cfg->mqtt_user), "");
+    get_str(h, "mqtt_pass", cfg->mqtt_pass, sizeof(cfg->mqtt_pass), "");
     size_t len = sizeof(cfg->admin_salt);
     size_t len2 = sizeof(cfg->admin_hash);
     if (nvs_get_blob(h, "asalt", cfg->admin_salt, &len) == ESP_OK &&
@@ -93,6 +97,18 @@ esp_err_t pt_store_save_config(const pt_config_t *cfg)
     }
     if (err == ESP_OK) {
         err = nvs_set_u8(h, "lanadmin", cfg->lan_admin ? 1 : 0);
+    }
+    if (err == ESP_OK) {
+        err = nvs_set_u8(h, "mqtt_on", cfg->mqtt_enabled ? 1 : 0);
+    }
+    if (err == ESP_OK) {
+        err = nvs_set_str(h, "mqtt_uri", cfg->mqtt_uri);
+    }
+    if (err == ESP_OK) {
+        err = nvs_set_str(h, "mqtt_user", cfg->mqtt_user);
+    }
+    if (err == ESP_OK) {
+        err = nvs_set_str(h, "mqtt_pass", cfg->mqtt_pass);
     }
     if (err == ESP_OK && cfg->admin_set) {
         err = nvs_set_blob(h, "asalt", cfg->admin_salt, sizeof(cfg->admin_salt));
@@ -196,6 +212,48 @@ esp_err_t pt_store_setup_password(char out[PT_SETUP_PW_LEN + 1])
     bootloader_random_disable();
     out[PT_SETUP_PW_LEN] = '\0';
     err = nvs_set_str(h, "appass", out);
+    if (err == ESP_OK) {
+        err = nvs_commit(h);
+    }
+    nvs_close(h);
+    return err;
+}
+
+esp_err_t pt_store_load_mqtt_ca(char *pem, size_t cap, size_t *len)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NS_CFG, NVS_READONLY, &h);
+    if (err != ESP_OK) {
+        return err == ESP_ERR_NVS_NOT_FOUND ? ESP_ERR_NOT_FOUND : err;
+    }
+    size_t n = cap;
+    err = nvs_get_blob(h, "mqttca", pem, &n);
+    nvs_close(h);
+    if (err != ESP_OK) {
+        return err == ESP_ERR_NVS_NOT_FOUND ? ESP_ERR_NOT_FOUND : err;
+    }
+    if (n == 0 || n >= cap || pem[n - 1] != '\0') {
+        return ESP_ERR_INVALID_SIZE; /* stored with its terminating NUL */
+    }
+    *len = n;
+    return ESP_OK;
+}
+
+esp_err_t pt_store_save_mqtt_ca(const char *pem)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NS_CFG, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        return err;
+    }
+    if (pem == NULL || pem[0] == '\0') {
+        err = nvs_erase_key(h, "mqttca");
+        if (err == ESP_ERR_NVS_NOT_FOUND) {
+            err = ESP_OK;
+        }
+    } else {
+        err = nvs_set_blob(h, "mqttca", pem, strlen(pem) + 1);
+    }
     if (err == ESP_OK) {
         err = nvs_commit(h);
     }

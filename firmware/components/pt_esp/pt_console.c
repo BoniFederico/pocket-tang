@@ -130,6 +130,33 @@ static int cmd_admin(int argc, char **argv)
 }
 
 static struct {
+    struct arg_str *uri;
+    struct arg_str *user;
+    struct arg_str *pass;
+    struct arg_lit *off;
+    struct arg_end *end;
+} s_mq;
+
+/* Test builds only: configure the MQTT integration (takes effect after a reboot). */
+static int cmd_mqtt(int argc, char **argv)
+{
+    if (arg_parse(argc, argv, (void **)&s_mq) != 0) {
+        arg_print_errors(stderr, s_mq.end, argv[0]);
+        return 1;
+    }
+    pt_config_t cfg;
+    pt_store_load_config(&cfg);
+    cfg.mqtt_enabled = s_mq.off->count == 0;
+    strlcpy(cfg.mqtt_uri, s_mq.uri->sval[0], sizeof(cfg.mqtt_uri));
+    strlcpy(cfg.mqtt_user, s_mq.user->count ? s_mq.user->sval[0] : "", sizeof(cfg.mqtt_user));
+    strlcpy(cfg.mqtt_pass, s_mq.pass->count ? s_mq.pass->sval[0] : "", sizeof(cfg.mqtt_pass));
+    esp_err_t err = pt_store_save_config(&cfg);
+    pt_zeroize(&cfg, sizeof(cfg));
+    printf("PT_MQTT_CFG %s\n", err == ESP_OK ? "OK" : esp_err_to_name(err));
+    return err == ESP_OK ? 0 : 1;
+}
+
+static struct {
     struct arg_int *ms;
     struct arg_end *end;
 } s_btn;
@@ -186,6 +213,11 @@ void pt_console_start(void)
     s_adm.pw = arg_str1(NULL, NULL, "<password>", "admin password (8-64 chars)");
     s_adm.lan = arg_lit0("l", "lan", "allow the admin page on the LAN");
     s_adm.end = arg_end(2);
+    s_mq.uri = arg_str1(NULL, NULL, "<uri>", "mqtt://host:1883 or mqtts://host:8883");
+    s_mq.user = arg_str0("u", "user", "<user>", "MQTT user");
+    s_mq.pass = arg_str0("P", "password", "<password>", "MQTT password");
+    s_mq.off = arg_lit0(NULL, "off", "disable the integration");
+    s_mq.end = arg_end(4);
     const esp_console_cmd_t cmds[] = {
         {.command = "provision",
          .help = "store Wi-Fi credentials (test builds)",
@@ -202,6 +234,10 @@ void pt_console_start(void)
          .help = "set admin password (test builds)",
          .func = cmd_admin,
          .argtable = &s_adm},
+        {.command = "mqtt",
+         .help = "configure MQTT (test builds)",
+         .func = cmd_mqtt,
+         .argtable = &s_mq},
         {.command = "factory-reset",
          .help = "erase keys and configuration",
          .func = cmd_factory_reset},
