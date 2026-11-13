@@ -27,19 +27,21 @@ jobs:
         profile: [default, test]
     steps:
       - uses: actions/checkout@v4
+      - name: Select sdkconfig defaults
+        id: prof
+        run: |
+          DEFAULTS="sdkconfig.defaults"
+          if [ "${{ matrix.profile }}" != "default" ]; then
+            for p in $(echo "${{ matrix.profile }}" | tr '+' ' '); do DEFAULTS="$DEFAULTS;profiles/sdkconfig.$p.defaults"; done
+          fi
+          echo "defaults=$DEFAULTS" >> "$GITHUB_OUTPUT"
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: ${{ env.IDF_VERSION }}
           target: ${{ matrix.target }}
           path: firmware
-          command: |
-            DEFAULTS="sdkconfig.defaults"
-            if [ "${{ matrix.profile }}" != "default" ]; then
-              for p in $(echo "${{ matrix.profile }}" | tr '+' ' '); do DEFAULTS="$DEFAULTS;profiles/sdkconfig.$p.defaults"; done
-            fi
-            idf.py -B build -DSDKCONFIG=build/sdkconfig -DSDKCONFIG_DEFAULTS="$DEFAULTS" set-target ${{ matrix.target }} build
-            idf.py -B build size
+          command: idf.py -B build -DSDKCONFIG=build/sdkconfig -DSDKCONFIG_DEFAULTS='${{ steps.prof.outputs.defaults }}' set-target ${{ matrix.target }} build size
       - name: Release images must not contain the test console
         if: matrix.profile != 'test'
         run: |
