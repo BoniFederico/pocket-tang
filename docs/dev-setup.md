@@ -50,4 +50,4 @@ TEST_WIFI_SSID=your-2.4GHz-network
 TEST_WIFI_PASSWORD=...
 ```
 
-Then run `python tools/hil/run.py --port COM3 all`. See `tools/hil/README.md`.
+Then run `python tools/hil/pt_hil.py --port COM3 all --build-dir out/esp32-test`. See `tools/hil/README.md`.

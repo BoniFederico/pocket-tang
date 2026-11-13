@@ -1,0 +1,87 @@
+site_name: Pocket Tang
+site_description: Tang server firmware for ESP32 - network-bound disk encryption (Clevis/LUKS) on a cheap microcontroller
+site_url: https://bonifederico.github.io/pocket-tang/
+repo_url: https://github.com/BoniFederico/pocket-tang
+repo_name: BoniFederico/pocket-tang
+edit_uri: edit/main/docs/
+copyright: Copyright 2026 Pocket Tang contributors - Apache License 2.0
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra_javascript:
+  - assets/mathjax-config.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - User guide:
+      - Getting started: user/getting-started.md
+      - Hardware: user/hardware.md
+      - Flashing: user/flashing.md
+      - Web flasher: flasher.md
+      - First setup and admin page: user/setup.md
+      - Binding disks with Clevis: user/clevis.md
+      - Key rotation: user/rotation.md
+      - Button, setup mode and factory reset: user/reset.md
+      - Hardening: user/hardening.md
+      - Troubleshooting: user/troubleshooting.md
+  - Design notes:
+      - Overview: design/index.md
+      - Background - LUKS, Clevis, NBDE: design/background.md
+      - The McCallum-Relyea exchange: design/mcallum-relyea.md
+      - JOSE, JWK, JWS and thumbprints: design/jose.md
+      - Tang protocol reference: design/protocol-reference.md
+      - Architecture: design/architecture.md
+      - Implementation choices: design/implementation.md
+      - Cryptography details: design/crypto.md
+      - Performance and memory: design/performance.md
+      - Threat model: design/threat-model.md
+      - Testing strategy: design/testing.md
+  - Measurements: measurements.md
+  - Architecture decisions:
+      - Index: adr/README.md
+      - "0001 ESP-IDF and crypto stack": adr/0001-esp-idf-version-and-crypto-stack.md
+      - "0002 Own JSON parser": adr/0002-own-json-parser.md
+      - "0003 Deviations from upstream": adr/0003-deviations-from-upstream-tang.md
+      - "0004 Own HTTP server": adr/0004-own-http-server.md
+  - Development: dev-setup.md

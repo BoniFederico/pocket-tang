@@ -7,3 +7,6 @@ idf_component_register(
     INCLUDE_DIRS "${PT_CORE_DIR}/include"
     REQUIRES mbedtls lwip)
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wshadow -Wconversion -Wsign-conversion -Wvla)
+if(DEFINED ENV{PT_VERSION})
+    target_compile_definitions(${COMPONENT_LIB} PUBLIC PT_VERSION="$ENV{PT_VERSION}")
+endif()

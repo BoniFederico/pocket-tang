@@ -1,3 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
+if(DEFINED ENV{PT_VERSION})
+    set(PROJECT_VER "$ENV{PT_VERSION}")
+endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(pocket-tang)

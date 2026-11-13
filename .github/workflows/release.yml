@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+env:
+  IDF_VERSION: v5.5.6
+
+jobs:
+  firmware:
+    name: Build ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        target: [esp32, esp32c3, esp32s3]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Version from tag
+        run: echo "PT_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+      - name: Build release image
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: ${{ env.IDF_VERSION }}
+          target: ${{ matrix.target }}
+          path: firmware
+          extra_docker_args: -e PT_VERSION=${{ env.PT_VERSION }}
+          command: idf.py -B build -DSDKCONFIG=build/sdkconfig set-target ${{ matrix.target }} build
+      - name: No test console in release images
+        run: |
+          if grep -q "^CONFIG_PT_TEST_CONSOLE=y" firmware/build/sdkconfig; then exit 1; fi
+          if grep -aq "TEST CONSOLE ENABLED" firmware/build/pocket-tang.bin; then exit 1; fi
+          grep -aq "${PT_VERSION}" firmware/build/pocket-tang.bin
+      - name: Merge image
+        run: |
+          pip install --quiet esptool
+          mkdir -p dist
+          cd firmware/build
+          esptool --chip ${{ matrix.target }} merge-bin \
+            -o "../../dist/pocket-tang-${GITHUB_REF_NAME}-${{ matrix.target }}.bin" @flash_args
+          cp pocket-tang.bin "../../dist/pocket-tang-${GITHUB_REF_NAME}-${{ matrix.target }}-app.bin"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/*
+
+  publish:
+    name: GitHub release
+    needs: firmware
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: cd dist && sha256sum *.bin > SHA256SUMS && cat SHA256SUMS
+      - name: Release notes from CHANGELOG
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          python3 - "$V" > notes.md <<'PY'
+          import re, sys
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(r"^## \[" + re.escape(sys.argv[1]) + r"\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.S | re.M)
+          print(m.group(1).strip() if m else "")
+          PY
+          test -s notes.md || echo "See CHANGELOG.md" > notes.md
+          cat notes.md
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Pocket Tang $GITHUB_REF_NAME" \
+            --notes-file notes.md --verify-tag
+
+  docs:
+    name: Publish docs with the web flasher images
+    needs: publish
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/docs.yml
