@@ -107,7 +107,7 @@ void app_main(void)
     pt_worker_run(log_thumbprints_job, NULL);
     pt_worker_run(set_lock_job, &cfg.locked);
 
-    ESP_ERROR_CHECK(pt_httpd_start(cfg.port));
+    ESP_ERROR_CHECK(pt_httpd_start(cfg.port, 0));
     if (!pt_wifi_wait_ip(30000)) {
         ESP_LOGW(TAG, "no IP address yet; will keep retrying");
     }

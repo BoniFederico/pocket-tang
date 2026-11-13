@@ -33,13 +33,13 @@ cppcheck --std=c17 --language=c --enable=warning,style,performance,portability \
     --suppress=checkersReport \
     -DMBEDTLS_ECP_DP_SECP521R1_ENABLED -DMBEDTLS_SHA1_C -DMBEDTLS_SHA224_C -DMBEDTLS_SHA256_C \
     -DMBEDTLS_SHA384_C -DMBEDTLS_SHA512_C -DMBEDTLS_ECDSA_DETERMINISTIC \
-    -I core/include core/src core/crypto host
+    -I core/include core/src core/crypto core/net host
 
 if [ "$TIDY" = 1 ]; then
     echo "== clang-tidy"
     BUILD=build/tidy
     cmake -S . -B "$BUILD" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang -DBUILD_TESTING=OFF >/dev/null
-    mapfile -t TIDY_FILES < <(git ls-files --cached --others --exclude-standard 'core/src/*.c' 'core/crypto/**/*.c' 'host/*.c')
+    mapfile -t TIDY_FILES < <(git ls-files --cached --others --exclude-standard 'core/src/*.c' 'core/crypto/**/*.c' 'core/net/*.c' 'host/*.c')
     if [ "${#TIDY_FILES[@]}" -gt 0 ]; then
         "$CLANG_TIDY" -p "$BUILD" --quiet "${TIDY_FILES[@]}"
     fi

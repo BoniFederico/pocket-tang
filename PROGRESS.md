@@ -7,8 +7,8 @@ Resume point for autonomous work. Keep this file current: what is done, what is 
 | Milestone | Issue | State |
 |-----------|-------|-------|
 | M0 scaffolding, toolchain, CI skeleton, board verification | #1 | done (PR #8) |
-| M1 portable core + host tests + clevis interop | #2 | in review (PR #11 merged, engine PR open) |
-| M2 ESP32 platform layer + HIL + measurements | #3 | not started |
+| M1 portable core + host tests + clevis interop | #2 | done (PRs #11, #12) |
+| M2 ESP32 platform layer + HIL + measurements | #3 | in review |
 | M3 SoftAP provisioning, admin UI, button, LED | #4 | not started |
 | M4 hardening profiles, threat model, fuzzing | #5 | not started |
 | M5 docs site, README, v1.0.0 | #6 | not started |
@@ -32,3 +32,6 @@ Resume point for autonomous work. Keep this file current: what is done, what is 
   protocol engine, HTTP parser, `tangd-host` and interop suite: 8 unit suites pass under ASan/UBSan,
   6 fuzzers clean, interop 54/54 incl. LUKS2 bind/unlock and byte-identical `/rec` replies.
   Deviation: private `d` in `/rec` requests rejected (ADR-0003).
+- 2026-11-13 — M2: firmware serves Tang from the board (HIL: interop 31/31 over LAN, rotation and
+  reboot persistence OK). Found and fixed a slowloris DoS in esp_http_server by replacing it with
+  the portable `pt_server` (ADR-0004); measurements in `docs/measurements.md`.

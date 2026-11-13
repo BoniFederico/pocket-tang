@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "pt/pt_server.h"
 #include "pt/pt_tang.h"
 
 #ifdef __cplusplus
@@ -129,8 +130,21 @@ esp_err_t pt_mdns_start(const char *hostname, uint16_t port);
 /* HTTP                                                                                         */
 /* ------------------------------------------------------------------------------------------ */
 
-/** @brief Start the HTTP server with the Tang endpoints on @p port. */
-esp_err_t pt_httpd_start(uint16_t port);
+/** Handler for the setup/admin UI (implemented by the application). */
+typedef void (*pt_ui_handler_fn)(void *ctx, const struct pt_srv_request *req,
+                                 struct pt_srv_response *resp, bool on_ap);
+
+/**
+ * @brief Start the HTTP server: Tang on @p tang_port, plus @p extra_port (e.g. 80 for the
+ *        captive portal) if non-zero and different.
+ */
+esp_err_t pt_httpd_start(uint16_t tang_port, uint16_t extra_port);
+
+/**
+ * @brief Route requests arriving on the access point address @p ap_ip (and /admin on the LAN
+ *        when @p lan_admin is true) to @p fn instead of the Tang endpoints.
+ */
+void pt_httpd_set_ui(pt_ui_handler_fn fn, void *ctx, const char *ap_ip, bool lan_admin);
 
 /* ------------------------------------------------------------------------------------------ */
 /* Test console (CONFIG_PT_TEST_CONSOLE only)                                                   */

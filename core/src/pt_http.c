@@ -196,6 +196,46 @@ int pt_http_parse_head(const char *buf, size_t len, size_t max_body, pt_http_req
     return 0;
 }
 
+bool pt_http_header(const char *head, size_t head_len, const char *name, const char **value,
+                    size_t *value_len)
+{
+    size_t nlen = strlen(name);
+    size_t i = 0;
+    /* skip the request line */
+    while (i + 1 < head_len && !(head[i] == '\r' && head[i + 1] == '\n')) {
+        i++;
+    }
+    i += 2;
+    while (i + 1 < head_len) {
+        size_t ls = i;
+        while (i + 1 < head_len && !(head[i] == '\r' && head[i + 1] == '\n')) {
+            i++;
+        }
+        size_t le = i;
+        i += 2;
+        if (le == ls) {
+            break; /* empty line: end of head */
+        }
+        const char *colon = memchr(head + ls, ':', le - ls);
+        if (colon == NULL || (size_t)(colon - (head + ls)) != nlen ||
+            !name_eq(head + ls, nlen, name)) {
+            continue;
+        }
+        size_t vs = (size_t)(colon - head) + 1;
+        while (vs < le && (head[vs] == ' ' || head[vs] == '\t')) {
+            vs++;
+        }
+        size_t ve = le;
+        while (ve > vs && (head[ve - 1] == ' ' || head[ve - 1] == '\t')) {
+            ve--;
+        }
+        *value = head + vs;
+        *value_len = ve - vs;
+        return true;
+    }
+    return false;
+}
+
 const char *pt_http_reason(int status)
 {
     switch (status) {
