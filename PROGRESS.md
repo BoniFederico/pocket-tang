@@ -12,7 +12,7 @@ Resume point for autonomous work. Keep this file current: what is done, what is 
 | M3 SoftAP provisioning, admin UI, button, LED | #4 | done (PR #14) |
 | M4 hardening profiles, threat model, fuzzing | #5 | done (PR #20) |
 | M5 docs site, README, v1.0.0 | #6 | done (PR #22, tag v1.0.0) |
-| M6 MQTT + Home Assistant, v1.1.0 | #7 | in review (PR #23) |
+| M6 MQTT + Home Assistant, v1.1.0 | #7 | done (PR #23, tag v1.1.0) |
 
 ## Environment (local, not in git)
 
@@ -59,3 +59,6 @@ Resume point for autonomous work. Keep this file current: what is done, what is 
 - MQTT HIL: start mosquitto (`scoop install mosquitto`), then
   `py tools/hil/pt_hil.py --port COM3 --url http://<board> mqtt --broker <pc-ip>`.
 - Never join the device's setup access point from this PC: ask the maintainer.
+- 2026-11-13 - v1.1.0 released (esp32/c3/s3 images + SHA256SUMS); web flasher serves v1.1.0.
+  Final HIL regression on the M6 firmware: all 12 steps pass + mqtt step. All milestones done.
+  Open follow-ups are the documented limitations #15-#19.
