@@ -1,0 +1,73 @@
+menu "Pocket Tang"
+
+    config PT_TANG_DEFAULT_PORT
+        int "Default Tang HTTP port"
+        range 1 65535
+        default 80
+        help
+            Port used for the Tang endpoints until another port is configured in setup mode.
+
+    config PT_DEFAULT_HOSTNAME
+        string "Default hostname (mDNS)"
+        default "pocket-tang"
+
+    choice PT_WIFI_PS
+        prompt "Wi-Fi power saving"
+        default PT_WIFI_PS_NONE
+        help
+            Modem sleep saves power but adds up to one DTIM interval (often 100-300 ms) of latency
+            to every request. A Tang server is usually mains powered, so it is off by default.
+        config PT_WIFI_PS_NONE
+            bool "Off (lowest latency)"
+        config PT_WIFI_PS_MIN_MODEM
+            bool "Minimum modem sleep"
+    endchoice
+
+    config PT_WORKER_STACK
+        int "Crypto worker task stack size (bytes)"
+        default 8192
+
+    config PT_WORKER_QUEUE_LEN
+        int "Crypto worker queue length"
+        range 1 16
+        default 4
+        help
+            Maximum number of pending crypto jobs. Requests beyond this get HTTP 503 instead of
+            queueing without bound.
+
+    config PT_HTTPD_MAX_SOCKETS
+        int "Maximum simultaneous HTTP connections"
+        range 2 10
+        default 5
+
+    config PT_BUTTON_GPIO
+        int "BOOT button GPIO (active low)"
+        default 9 if IDF_TARGET_ESP32C3
+        default 0
+
+    config PT_LED_GPIO
+        int "Status LED GPIO (-1 to disable)"
+        default 8 if IDF_TARGET_ESP32C3
+        default 48 if IDF_TARGET_ESP32S3
+        default 2
+
+    config PT_LED_ACTIVE_HIGH
+        bool "Status LED is active high"
+        default y
+
+    config PT_SETUP_TIMEOUT_MIN
+        int "Setup mode timeout (minutes, 0 = never)"
+        default 15
+        help
+            When the device is already provisioned and enters setup mode (button press), it
+            returns to normal operation after this many minutes without configuration changes.
+
+    config PT_TEST_CONSOLE
+        bool "Enable the serial test console (TEST BUILDS ONLY)"
+        default n
+        help
+            Adds serial commands to provision Wi-Fi, simulate button presses and print statistics,
+            used by the hardware-in-the-loop test runner. Anyone with access to the serial port
+            can reconfigure the device. Never enable this in release images.
+
+endmenu

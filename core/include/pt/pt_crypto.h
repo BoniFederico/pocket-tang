@@ -128,6 +128,13 @@ pt_err_t pt_es512_sign(const uint8_t d[PT_P521_LEN], const pt_iovec_t *msg, size
 pt_err_t pt_es512_verify(const pt_p521_point_t *pub, const pt_iovec_t *msg, size_t n,
                          const uint8_t sig[PT_ES512_SIG_LEN]);
 
+/**
+ * @brief PBKDF2-HMAC-SHA256 (RFC 8018) for admin password hashing.
+ * @return PT_OK, PT_ERR_INVALID (zero iterations or lengths), PT_ERR_CRYPTO.
+ */
+pt_err_t pt_pbkdf2_sha256(const uint8_t *pw, size_t pw_len, const uint8_t *salt, size_t salt_len,
+                          uint32_t iterations, uint8_t *out, size_t out_len);
+
 #ifdef __cplusplus
 }
 #endif

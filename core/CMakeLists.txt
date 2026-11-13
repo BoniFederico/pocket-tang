@@ -23,10 +23,14 @@ add_library(pt_core STATIC
     src/pt_keystore.c
     src/pt_tang.c
     src/pt_http.c
+    src/pt_web.c
+    net/pt_server.c
     crypto/mbedtls/pt_crypto_mbedtls.c
 )
 target_include_directories(pt_core PUBLIC include)
 target_link_libraries(pt_core PRIVATE pt_warnings PUBLIC mbedcrypto)
+# BSD socket extensions (MSG_DONTWAIT, TCP_NODELAY) for net/pt_server.c on glibc.
+set_source_files_properties(net/pt_server.c PROPERTIES COMPILE_DEFINITIONS _DEFAULT_SOURCE)
 target_compile_definitions(pt_core PUBLIC PT_CORE_HOST_BUILD=1)
 
 if(BUILD_TESTING)

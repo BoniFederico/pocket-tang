@@ -1,0 +1,6 @@
+# Test profile: serial test console for the hardware-in-the-loop runner, extra debugging.
+# NEVER use for release images.
+CONFIG_PT_TEST_CONSOLE=y
+CONFIG_HEAP_POISONING_LIGHT=y
+CONFIG_FREERTOS_WATCHPOINT_END_OF_STACK=y
+CONFIG_COMPILER_STACK_CHECK_MODE_ALL=y

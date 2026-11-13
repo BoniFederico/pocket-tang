@@ -23,5 +23,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Core: Tang protocol engine (`/adv`, `/adv/{kid}`, `/rec/{kid}`, `/version`) with a precomputed
   advertisement cache and upstream-identical status codes (see ADR-0003 for deliberate deviations).
 - Core: strict bounded HTTP/1.1 request-head parser.
+- Core: event-driven HTTP server on BSD sockets (`pt_server`) resistant to slow clients and
+  connection floods; used by the firmware and `tangd-host` (ADR-0004).
+- Core: web UI helpers (urlencoded forms, HTML escaping, PBKDF2 password verifiers, sessions with CSRF
+  tokens, login back-off).
+- Firmware: ESP32 platform layer serving Tang (NVS storage, crypto worker with bounded queue, Wi-Fi
+  STA with WPA3, mDNS, SNTP, statistics), serial test console in the test profile only.
+- Hardware-in-the-loop runner `tools/hil/pt_hil.py` and measurements in `docs/measurements.md`.
 - Host harness `tangd-host` and `tools/interop.sh`: clevis round-trips, rotation, upstream cross-check,
   sss and LUKS2 bind/unlock; run in CI.

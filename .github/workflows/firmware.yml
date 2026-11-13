@@ -24,22 +24,37 @@ jobs:
       fail-fast: false
       matrix:
         target: [esp32, esp32c3, esp32s3]
-        profile: [default]
+        profile: [default, test]
     steps:
       - uses: actions/checkout@v4
+      - name: Combine sdkconfig defaults for the profile
+        run: |
+          cd firmware
+          cp sdkconfig.defaults sdkconfig.ci.defaults
+          if [ "${{ matrix.profile }}" != "default" ]; then
+            for p in $(echo "${{ matrix.profile }}" | tr '+' ' '); do
+              cat "profiles/sdkconfig.$p.defaults" >> sdkconfig.ci.defaults
+            done
+          fi
+          # target-specific defaults are picked up next to the main defaults file
+          cp "sdkconfig.defaults.${{ matrix.target }}" "sdkconfig.ci.defaults.${{ matrix.target }}"
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: ${{ env.IDF_VERSION }}
           target: ${{ matrix.target }}
           path: firmware
-          command: |
-            if [ "${{ matrix.profile }}" = "default" ]; then DEFAULTS="sdkconfig.defaults"; else DEFAULTS="sdkconfig.defaults;profiles/sdkconfig.${{ matrix.profile }}.defaults"; fi
-            idf.py -B build -DSDKCONFIG_DEFAULTS="$DEFAULTS" set-target ${{ matrix.target }} build size-components
+          command: idf.py -B build -DSDKCONFIG=build/sdkconfig -DSDKCONFIG_DEFAULTS=sdkconfig.ci.defaults set-target ${{ matrix.target }} build size
+      - name: Release images must not contain the test console
+        if: matrix.profile != 'test'
+        run: |
+          if grep -q "^CONFIG_PT_TEST_CONSOLE=y" firmware/build/sdkconfig; then echo "test console enabled"; exit 1; fi
+          if grep -aq "TEST CONSOLE ENABLED" firmware/build/pocket-tang.bin; then echo "test console code linked"; exit 1; fi
+          echo "OK: no test console in ${{ matrix.target }}/${{ matrix.profile }}"
       - name: Collect artifacts
         run: |
           mkdir -p out
-          cp firmware/build/pocket-tang.bin firmware/build/bootloader/bootloader.bin firmware/build/partition_table/partition-table.bin firmware/build/flasher_args.json out/
+          cp firmware/build/pocket-tang.bin firmware/build/bootloader/bootloader.bin firmware/build/partition_table/partition-table.bin firmware/build/flasher_args.json firmware/build/sdkconfig out/
       - uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.target }}-${{ matrix.profile }}

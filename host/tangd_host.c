@@ -14,22 +14,18 @@
  *   tangd-host ... --thp                print the S256 thumbprint of the active signing key, exit
  *   options: -l ADDR (default 127.0.0.1), --no-tang-pub, --lock
  */
-#include "pt/pt_http.h"
+#include "pt/pt_server.h"
 #include "pt/pt_tang.h"
 
-#include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/random.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <unistd.h>
 
 static pt_tang_t g_tang;
@@ -181,95 +177,32 @@ static int load_state(const char *path)
     return 0;
 }
 
-static bool send_all(int fd, const char *buf, size_t len)
+static void handle(void *ctx, const pt_srv_request_t *req, pt_srv_response_t *resp)
 {
-    while (len > 0) {
-        ssize_t n = send(fd, buf, len, MSG_NOSIGNAL);
-        if (n <= 0) {
-            if (n < 0 && errno == EINTR) {
-                continue;
-            }
-            return false;
-        }
-        buf += n;
-        len -= (size_t)n;
-    }
-    return true;
-}
-
-static void reply_status(int fd, int status)
-{
-    char head[256];
-    size_t n = pt_http_write_head(head, sizeof(head), status, NULL, 0, false);
-    (void)send_all(fd, head, n);
-}
-
-static void serve_client(int fd)
-{
-    struct timeval tv = {.tv_sec = 5, .tv_usec = 0};
-    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-
-    static char buf[PT_HTTP_MAX_HEAD + PT_TANG_MAX_BODY];
-    size_t have = 0;
-    pt_http_req_t hreq;
-    int rc = PT_HTTP_NEED_MORE;
-    while (rc == PT_HTTP_NEED_MORE) {
-        if (have >= PT_HTTP_MAX_HEAD) {
-            reply_status(fd, 431);
-            return;
-        }
-        ssize_t n = recv(fd, buf + have, PT_HTTP_MAX_HEAD - have, 0);
-        if (n <= 0) {
-            if (n < 0 && errno == EINTR) {
-                continue;
-            }
-            if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-                reply_status(fd, 408);
-            }
-            return;
-        }
-        have += (size_t)n;
-        rc = pt_http_parse_head(buf, have, PT_TANG_MAX_BODY, &hreq);
-    }
-    if (rc < 0) {
-        reply_status(fd, -rc);
-        return;
-    }
-    size_t need = hreq.head_len + hreq.content_length;
-    while (have < need) {
-        ssize_t n = recv(fd, buf + have, need - have, 0);
-        if (n <= 0) {
-            if (n < 0 && errno == EINTR) {
-                continue;
-            }
-            reply_status(fd, 408);
-            return;
-        }
-        have += (size_t)n;
-    }
-
-    pt_tang_req_t treq;
-    pt_tang_route(hreq.method, hreq.target, hreq.target_len, &treq);
+    (void)ctx;
     static char body[PT_TANG_RESP_MAX];
-    pt_tang_resp_t resp;
-    pt_tang_handle(&g_tang, &treq, (const uint8_t *)buf + hreq.head_len, hreq.content_length, body,
-                   sizeof(body), &resp);
-    char head[256];
-    size_t hn = pt_http_write_head(head, sizeof(head), resp.status, resp.content_type,
-                                   resp.body_len, false);
-    if (send_all(fd, head, hn)) {
-        (void)send_all(fd, body, resp.body_len);
-    }
-    fprintf(stderr, "tangd-host: %s %.*s => %d\n", hreq.method, (int)hreq.target_len, hreq.target,
-            resp.status);
-    pt_zeroize(buf, have);
+    pt_tang_req_t treq;
+    pt_tang_route(req->method, req->target, req->target_len, &treq);
+    pt_tang_resp_t tr;
+    pt_tang_handle(&g_tang, &treq, req->body, req->body_len, body, sizeof(body), &tr);
+    resp->status = tr.status;
+    resp->content_type = tr.content_type;
+    resp->body = body;
+    resp->body_len = tr.body_len;
+    fprintf(stderr, "tangd-host: %s %s %.*s => %d\n", req->peer, req->method,
+            (int)req->target_len, req->target, tr.status);
+}
+
+static void on_reject(void *ctx, int status, const char *peer)
+{
+    (void)ctx;
+    fprintf(stderr, "tangd-host: %s rejected with %d\n", peer, status);
 }
 
 static void usage(void)
 {
     fprintf(stderr, "usage: tangd-host [-l ADDR] [-p PORT] (-d KEYDIR | -s STATEFILE) "
-                    "[--rotate] [--thp] [--no-tang-pub] [--lock]\n");
+                    "[--rotate] [--thp] [--no-tang-pub] [--lock] [--timeout-ms N]\n");
 }
 
 int main(int argc, char **argv)
@@ -282,6 +215,7 @@ int main(int argc, char **argv)
     bool thp = false;
     bool tang_pub = true;
     bool lock = false;
+    uint32_t timeout_ms = 5000;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-l") == 0 && i + 1 < argc) {
             addr = argv[++i];
@@ -301,6 +235,8 @@ int main(int argc, char **argv)
             tang_pub = false;
         } else if (strcmp(argv[i], "--lock") == 0) {
             lock = true;
+        } else if (strcmp(argv[i], "--timeout-ms") == 0 && i + 1 < argc) {
+            timeout_ms = (uint32_t)strtoul(argv[++i], NULL, 10);
         } else {
             usage();
             return 2;
@@ -353,32 +289,26 @@ int main(int argc, char **argv)
     sigemptyset(&act.sa_mask);
     sigaction(SIGINT, &act, NULL);
     sigaction(SIGTERM, &act, NULL);
-    int s = socket(AF_INET, SOCK_STREAM, 0);
-    int one = 1;
-    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-    struct sockaddr_in sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sin_family = AF_INET;
-    sa.sin_port = htons((uint16_t)port);
-    if (inet_pton(AF_INET, addr, &sa.sin_addr) != 1 ||
-        bind(s, (struct sockaddr *)&sa, sizeof(sa)) != 0 || listen(s, 16) != 0) {
+    static pt_srv_t srv;
+    pt_srv_config_t sc = {
+        .ports = {(uint16_t)port, 0},
+        .bind_addr = addr,
+        .max_conns = PT_SRV_MAX_CONNS,
+        .max_per_peer = PT_SRV_MAX_CONNS,
+        .request_timeout_ms = timeout_ms,
+        .send_timeout_ms = 5000,
+        .handler = handle,
+        .on_reject = on_reject,
+    };
+    if (pt_srv_open(&srv, &sc) != PT_OK) {
         perror("tangd-host: listen");
         return 1;
     }
     fprintf(stderr, "tangd-host: listening on %s:%d\n", addr, port);
     while (!g_stop) {
-        int c = accept(s, NULL, NULL);
-        if (c < 0) {
-            if (errno == EINTR) {
-                continue; /* loop condition re-checks g_stop */
-            }
-            perror("accept");
-            break;
-        }
-        serve_client(c);
-        close(c);
+        pt_srv_poll(&srv, 250);
     }
-    close(s);
+    pt_srv_close(&srv);
     pt_tang_wipe(&g_tang);
     return 0;
 }

@@ -13,6 +13,7 @@
 #include "mbedtls/ecdsa.h"
 #include "mbedtls/ecp.h"
 #include "mbedtls/md.h"
+#include "mbedtls/pkcs5.h"
 #include "mbedtls/sha1.h"
 #include "mbedtls/sha256.h"
 #include "mbedtls/sha512.h"
@@ -399,4 +400,15 @@ pt_err_t pt_es512_verify(const pt_p521_point_t *pub, const pt_iovec_t *msg, size
     mbedtls_ecp_point_free(&q);
     mbedtls_ecp_group_free(&grp);
     return err;
+}
+
+pt_err_t pt_pbkdf2_sha256(const uint8_t *pw, size_t pw_len, const uint8_t *salt, size_t salt_len,
+                          uint32_t iterations, uint8_t *out, size_t out_len)
+{
+    if (pw == NULL || salt == NULL || out == NULL || iterations == 0 || out_len == 0) {
+        return PT_ERR_INVALID;
+    }
+    int rc = mbedtls_pkcs5_pbkdf2_hmac_ext(MBEDTLS_MD_SHA256, pw, pw_len, salt, salt_len,
+                                           iterations, (uint32_t)out_len, out);
+    return rc == 0 ? PT_OK : PT_ERR_CRYPTO;
 }

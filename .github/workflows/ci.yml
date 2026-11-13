@@ -71,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [json, b64url, jwk, tang, http]
+        target: [json, b64url, jwk, tang, http, web]
     steps:
       - uses: actions/checkout@v4
       - name: Install tools

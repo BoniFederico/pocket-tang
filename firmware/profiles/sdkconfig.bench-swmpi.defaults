@@ -1,0 +1,2 @@
+# Benchmark only: software big-number arithmetic, to measure the hardware MPI speed-up.
+CONFIG_MBEDTLS_HARDWARE_MPI=n

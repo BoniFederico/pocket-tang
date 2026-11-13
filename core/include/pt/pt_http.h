@@ -50,6 +50,16 @@ typedef struct pt_http_req {
  */
 int pt_http_parse_head(const char *buf, size_t len, size_t max_body, pt_http_req_t *req);
 
+/**
+ * @brief Find a header field in a request head that pt_http_parse_head() accepted.
+ *
+ * Case-insensitive match; @p name must be given in lower case. The value is returned without
+ * surrounding whitespace.
+ * @return true if found (first occurrence).
+ */
+bool pt_http_header(const char *head, size_t head_len, const char *name, const char **value,
+                    size_t *value_len);
+
 /** @brief Standard reason phrase for a status code ("Unknown" if not known). */
 const char *pt_http_reason(int status);
 
