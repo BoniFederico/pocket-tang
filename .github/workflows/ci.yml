@@ -58,7 +58,7 @@ jobs:
           gcovr -r . --filter core/src --filter core/crypto --print-summary --xml coverage.xml --html-details coverage.html
       - name: Upload coverage
         if: matrix.mode == 'coverage'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: |
@@ -88,7 +88,7 @@ jobs:
           build/core/fuzz/fuzz_${{ matrix.target }} -max_total_time=60 -max_len=4096 -timeout=10 corpus
       - name: Upload crash artefacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fuzz-crash-${{ matrix.target }}
           path: |
