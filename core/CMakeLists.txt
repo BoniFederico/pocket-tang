@@ -23,6 +23,7 @@ add_library(pt_core STATIC
     src/pt_keystore.c
     src/pt_tang.c
     src/pt_http.c
+    src/pt_web.c
     crypto/mbedtls/pt_crypto_mbedtls.c
 )
 target_include_directories(pt_core PUBLIC include)
