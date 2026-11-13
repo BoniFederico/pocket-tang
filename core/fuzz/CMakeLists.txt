@@ -7,3 +7,6 @@ endfunction()
 
 pt_add_fuzzer(fuzz_json fuzz_json.c)
 pt_add_fuzzer(fuzz_b64url fuzz_b64url.c)
+pt_add_fuzzer(fuzz_jwk fuzz_jwk.c)
+pt_add_fuzzer(fuzz_tang fuzz_tang.c)
+pt_add_fuzzer(fuzz_http fuzz_http.c)

@@ -7,3 +7,4 @@ Accepted ADRs are not edited; a new ADR supersedes an old one.
 |----|-------|--------|
 | [0001](0001-esp-idf-version-and-crypto-stack.md) | ESP-IDF v5.5 with Mbed TLS 3.6 as the crypto stack | Accepted |
 | [0002](0002-own-json-parser.md) | Own strict, bounded JSON parser instead of cJSON/jsmn | Accepted |
+| [0003](0003-deviations-from-upstream-tang.md) | Intentional deviations from upstream tang behaviour | Accepted |
