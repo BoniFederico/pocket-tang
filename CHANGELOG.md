@@ -15,3 +15,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Core: strict, bounded, non-recursive JSON tokenizer and bounded JSON writer.
 - Core: strict base64url codec (rejects padding and non-canonical encodings).
 - libFuzzer harnesses for JSON and base64url, run for 60 s per target in CI.
+- Core: crypto backend interface with an Mbed TLS 3.6 implementation (P-521 point/scalar checks,
+  McCallum-Relyea exchange, deterministic ES512, SHA-1/224/256/384/512).
+- Core: EC P-521 JWK parsing/serialisation, RFC 7638 thumbprints, libjose-compatible key permissions.
+- Core: key store with tang-compatible rotation, versioned checksummed persistence format and import of
+  upstream tang key files.
+- Core: Tang protocol engine (`/adv`, `/adv/{kid}`, `/rec/{kid}`, `/version`) with a precomputed
+  advertisement cache and upstream-identical status codes (see ADR-0003 for deliberate deviations).
+- Core: strict bounded HTTP/1.1 request-head parser.
+- Host harness `tangd-host` and `tools/interop.sh`: clevis round-trips, rotation, upstream cross-check,
+  sss and LUKS2 bind/unlock; run in CI.

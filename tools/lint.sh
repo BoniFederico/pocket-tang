@@ -31,6 +31,8 @@ cppcheck --std=c17 --language=c --enable=warning,style,performance,portability \
     --inline-suppr --error-exitcode=1 --quiet \
     --suppress=missingIncludeSystem --suppress=unusedFunction --suppress=unmatchedSuppression \
     --suppress=checkersReport \
+    -DMBEDTLS_ECP_DP_SECP521R1_ENABLED -DMBEDTLS_SHA1_C -DMBEDTLS_SHA224_C -DMBEDTLS_SHA256_C \
+    -DMBEDTLS_SHA384_C -DMBEDTLS_SHA512_C -DMBEDTLS_ECDSA_DETERMINISTIC \
     -I core/include core/src core/crypto host
 
 if [ "$TIDY" = 1 ]; then

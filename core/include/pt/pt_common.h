@@ -34,7 +34,7 @@ typedef enum pt_err {
 /** Byte length of a P-521 coordinate or scalar as used by JOSE (fixed-width, big-endian). */
 #define PT_P521_LEN 66
 /** Byte length of an ES512 raw signature (r || s). */
-#define PT_ES512_SIG_LEN (2 * PT_P521_LEN)
+#define PT_ES512_SIG_LEN ((size_t)2 * PT_P521_LEN)
 /** Base64url length of a 66-byte coordinate (no padding). */
 #define PT_P521_B64_LEN 88
 

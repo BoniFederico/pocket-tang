@@ -6,8 +6,8 @@ Resume point for autonomous work. Keep this file current: what is done, what is 
 
 | Milestone | Issue | State |
 |-----------|-------|-------|
-| M0 scaffolding, toolchain, CI skeleton, board verification | #1 | in progress |
-| M1 portable core + host tests + clevis interop | #2 | not started |
+| M0 scaffolding, toolchain, CI skeleton, board verification | #1 | done (PR #8) |
+| M1 portable core + host tests + clevis interop | #2 | in review (PR #11 merged, engine PR open) |
 | M2 ESP32 platform layer + HIL + measurements | #3 | not started |
 | M3 SoftAP provisioning, admin UI, button, LED | #4 | not started |
 | M4 hardening profiles, threat model, fuzzing | #5 | not started |
@@ -26,3 +26,9 @@ Resume point for autonomous work. Keep this file current: what is done, what is 
 
 - 2026-11-13 â€” Environment surveyed; board verified (ESP32-D0WD-V3 rev v3.1, 4 MB flash); decided on
   ESP-IDF v5.5.6 + Mbed TLS 3.6 (ADR-0001); milestone issues #1â€“#7 created; scaffolding started.
+- 2026-11-13 — M0 merged (#8); branch protection on `main` (required checks, linear history, squash only).
+- 2026-11-13 — Recorded upstream tang 14 behaviour (fixtures in `core/tests/fixtures/tang14`,
+  `docs/design/protocol-reference.md`). Core JSON/base64url merged (#11). Crypto backend, JWK, key store,
+  protocol engine, HTTP parser, `tangd-host` and interop suite: 8 unit suites pass under ASan/UBSan,
+  6 fuzzers clean, interop 54/54 incl. LUKS2 bind/unlock and byte-identical `/rec` replies.
+  Deviation: private `d` in `/rec` requests rejected (ADR-0003).

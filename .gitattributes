@@ -5,3 +5,5 @@
 *.gif binary
 *.bin binary
 *.woff2 binary
+core/fuzz/corpus/** binary
+core/tests/fixtures/** -text

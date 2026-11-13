@@ -71,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [json, b64url]
+        target: [json, b64url, jwk, tang, http]
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
@@ -95,3 +95,20 @@ jobs:
             crash-*
             timeout-*
             leak-*
+
+  interop:
+    name: Clevis / upstream tang interop
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clevis, tang, jose
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            ninja-build cmake gcc clevis clevis-luks tang jose jq socat curl cryptsetup
+      - name: Build tangd-host
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=OFF
+          cmake --build build --target tangd-host
+      - name: Interop suite (incl. LUKS2 bind/unlock)
+        run: sudo -E env "PATH=$PATH" tools/interop.sh --host-bin build/host/tangd-host
