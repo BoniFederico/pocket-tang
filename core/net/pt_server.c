@@ -71,9 +71,9 @@ static bool send_all(const pt_srv_t *s, int fd, const char *data, size_t len)
 
 static void reply(const pt_srv_t *s, int fd, const pt_srv_response_t *r)
 {
-    char head[512];
+    char head[1024];
     size_t extra = r->headers ? strlen(r->headers) : 0;
-    if (extra > 256) {
+    if (extra > 768) {
         return; /* handler bug: refuse rather than truncate headers */
     }
     size_t n = pt_http_write_head(head, sizeof(head) - extra, r->status, r->content_type,

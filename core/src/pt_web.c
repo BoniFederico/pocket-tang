@@ -291,7 +291,7 @@ void pt_ratelimit_fail(pt_ratelimit_t *r, uint32_t now)
     }
     if (r->failures >= 3) {
         uint32_t shift = r->failures - 3;
-        uint32_t delay = shift >= 9 ? 300u : (1u << shift);
+        uint32_t delay = shift >= 6 ? 300u : (5u << shift); /* 5, 10, 20, ... 300 s */
         r->blocked_until = now + (delay > 300u ? 300u : delay);
     }
 }

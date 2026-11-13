@@ -241,6 +241,10 @@ const char *pt_http_reason(int status)
     switch (status) {
     case 200:
         return "OK";
+    case 302:
+        return "Found";
+    case 303:
+        return "See Other";
     case 400:
         return "Bad Request";
     case 403:
@@ -255,6 +259,8 @@ const char *pt_http_reason(int status)
         return "Payload Too Large";
     case 414:
         return "URI Too Long";
+    case 429:
+        return "Too Many Requests";
     case 431:
         return "Request Header Fields Too Large";
     case 500:

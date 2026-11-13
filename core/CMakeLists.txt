@@ -24,6 +24,7 @@ add_library(pt_core STATIC
     src/pt_tang.c
     src/pt_http.c
     src/pt_web.c
+    src/pt_dns.c
     net/pt_server.c
     crypto/mbedtls/pt_crypto_mbedtls.c
 )

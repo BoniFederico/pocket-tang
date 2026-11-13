@@ -56,6 +56,53 @@ esp_err_t pt_store_save_keys(const uint8_t *blob, size_t len);
 /** @brief Erase keys, configuration and statistics (factory reset). */
 esp_err_t pt_store_factory_reset(void);
 
+/** Length of the setup access-point password. */
+#define PT_SETUP_PW_LEN 12
+
+/**
+ * @brief Get the per-device WPA2 password of the setup access point, generating and storing a
+ *        random one on first use (a factory reset generates a new one).
+ * @param out Receives PT_SETUP_PW_LEN characters plus NUL.
+ */
+esp_err_t pt_store_setup_password(char out[PT_SETUP_PW_LEN + 1]);
+
+/* ------------------------------------------------------------------------------------------ */
+/* Status LED and BOOT button                                                                   */
+/* ------------------------------------------------------------------------------------------ */
+
+typedef enum pt_led_state {
+    PT_LED_OFF = 0,
+    PT_LED_CONNECTING, /**< fast blink: joining Wi-Fi */
+    PT_LED_NORMAL,     /**< off, short blip on each recovery */
+    PT_LED_SETUP,      /**< slow blink (1 Hz): setup mode */
+    PT_LED_HOLD_SETUP, /**< very fast blink: release now to enter setup mode */
+    PT_LED_HOLD_RESET, /**< solid on: release now to factory reset */
+    PT_LED_ERROR,      /**< triple blink: keys unavailable */
+} pt_led_state_t;
+
+/** @brief Configure the LED GPIO (CONFIG_PT_LED_GPIO; no-op if < 0). */
+void pt_led_init(void);
+/** @brief Set the LED pattern. Every change is logged as "PT_LED <name>" for HIL tests. */
+void pt_led_set(pt_led_state_t state);
+/** @brief Current pattern. */
+pt_led_state_t pt_led_get(void);
+/** @brief Short blip (successful recovery) without changing the pattern. */
+void pt_led_blip(void);
+
+typedef enum pt_button_action {
+    PT_BUTTON_SETUP = 1, /**< held 3..10 s: enter setup mode (keys kept) */
+    PT_BUTTON_RESET = 2, /**< held >= 10 s: factory reset (keys destroyed) */
+} pt_button_action_t;
+
+/** Callback invoked on the button task after the button is released. */
+typedef void (*pt_button_cb)(pt_button_action_t action);
+
+/** @brief Start watching the BOOT button (CONFIG_PT_BUTTON_GPIO, active low). */
+esp_err_t pt_button_start(pt_button_cb cb);
+
+/** @brief Test builds: simulate holding the button for @p ms milliseconds. */
+void pt_button_simulate(uint32_t ms);
+
 /* ------------------------------------------------------------------------------------------ */
 /* Crypto worker                                                                                */
 /* ------------------------------------------------------------------------------------------ */
@@ -125,6 +172,35 @@ void pt_wifi_ip(char *out, size_t cap);
 int pt_wifi_rssi(void);
 /** @brief Start mDNS advertising <hostname>.local and the Tang HTTP service. */
 esp_err_t pt_mdns_start(const char *hostname, uint16_t port);
+
+/** IPv4 address of the setup access point. */
+#define PT_AP_IP "192.168.4.1"
+
+/**
+ * @brief Start setup mode: a WPA2 access point @p ap_ssid / @p ap_pass, plus the station
+ *        connection when @p with_sta is true (so Tang keeps serving while in setup mode).
+ */
+esp_err_t pt_wifi_start_setup(const pt_config_t *cfg, const char *ap_ssid, const char *ap_pass,
+                              bool with_sta);
+
+/** One scanned network. */
+typedef struct pt_scan_ap {
+    char ssid[PT_SSID_MAX + 1];
+    int8_t rssi;
+    bool secure;
+} pt_scan_ap_t;
+
+/**
+ * @brief Scan for networks (blocking, ~2 s). Duplicate SSIDs are merged (strongest kept).
+ * @return number of entries written to @p out.
+ */
+int pt_wifi_scan(pt_scan_ap_t *out, int max);
+
+/** @brief Number of stations connected to the setup access point. */
+int pt_wifi_ap_clients(void);
+
+/** @brief Start the captive-portal DNS responder on the access point (UDP port 53). */
+esp_err_t pt_dnsd_start(void);
 
 /* ------------------------------------------------------------------------------------------ */
 /* HTTP                                                                                         */

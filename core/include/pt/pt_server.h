@@ -59,7 +59,7 @@ typedef struct pt_srv_request {
 typedef struct pt_srv_response {
     int status;
     const char *content_type; /**< NULL for no Content-Type */
-    const char *headers;      /**< extra header lines, each ending in CRLF; may be NULL */
+    const char *headers;      /**< extra header lines ending in CRLF, max 768 bytes; or NULL */
     const char *body;
     size_t body_len;
 } pt_srv_response_t;
