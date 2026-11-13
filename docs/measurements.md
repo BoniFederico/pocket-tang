@@ -45,6 +45,23 @@ Key generation for two P-521 keys at first boot takes about 1.6 s.
 | Static connection buffers (6 × 4 KB) | 24 KB |
 | Application image | 0.91 MB (51 % of the 1.9 MB app partition free) |
 
+### Final v1.0 firmware (setup mode, admin UI, captive DNS included)
+
+Full 12-step HIL run on 2026-11-13 (`pt_hil.py all`, test profile):
+
+| | |
+|---|---|
+| `/rec` round trip p50 / p95 | 572 / 611 ms (one outlier at 1.9 s during Wi-Fi activity) |
+| `/rec` crypto on device (mean) | 541 ms |
+| `/adv` round trip p50 / p95 | 29 / 38 ms |
+| Free heap after boot (normal mode) | 128.7 KB |
+| Free heap after 120 s stress / minimum ever | 125.2 KB / 99.9 KB |
+| Crypto worker / HTTP task stack free at high-water mark | 4264 / 3164 bytes |
+| Stress (6 threads + slowloris, 120 s) | 427 × 200, 223 correct 4xx, 0 connection errors |
+
+The roughly 18 KB less free heap than the M2 measurements above comes from the setup/admin
+features: the UI page buffer, the captive DNS, button and LED tasks.
+
 ## Robustness under load
 
 `stress` runs 6–8 client threads for 120–180 s. One third send valid `/rec` requests, one third `/adv`, and one third hostile requests. The hostile requests are oversized bodies, malformed JWKs, unknown kids, very long URIs and wrong methods. One more thread keeps a slowloris connection that sends one header byte per second.
