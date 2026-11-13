@@ -66,6 +66,11 @@ jobs:
           for opt in CONFIG_SECURE_BOOT=y CONFIG_SECURE_FLASH_ENCRYPTION_MODE_RELEASE=y CONFIG_NVS_ENCRYPTION=y; do
             grep -q "^$opt$" firmware/build/sdkconfig || { echo "missing $opt"; exit 1; }
           done
+          case "${{ matrix.profile }}" in
+            secure-sbv2) want=CONFIG_SECURE_BOOT_V2_ENABLED=y ;;
+            secure-esp32-sbv1) want=CONFIG_SECURE_BOOT_V1_ENABLED=y ;;
+          esac
+          grep -q "^$want$" firmware/build/sdkconfig || { echo "expected $want"; exit 1; }
       - name: Remove signing keys
         if: always() && startsWith(matrix.profile, 'secure')
         run: rm -f firmware/secure_boot_signing_key*.pem
