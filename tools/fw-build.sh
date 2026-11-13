@@ -26,6 +26,29 @@ if [ "$PROFILE" != default ]; then
     for p in ${PROFILE//+/ }; do DEFAULTS="$DEFAULTS;profiles/sdkconfig.$p.defaults"; done
 fi
 cd "$ROOT/firmware"
+
+# Secure profiles need a signing key. For CI/test builds generate a throwaway one; a real
+# deployment must use its own, offline-generated key (docs/user/hardening.md).
+gen_key() { # file version scheme
+    if [ ! -f "$1" ]; then
+        if [ "${PT_RELEASE_SIGNING:-0}" = 1 ]; then
+            echo "missing signing key $1 (PT_RELEASE_SIGNING=1 refuses to generate one)" >&2
+            exit 1
+        fi
+        echo "WARNING: generating a THROWAWAY signing key $1 for a test build." >&2
+        echo "WARNING: images signed with it must never be flashed to a device you keep." >&2
+        if [ "$2" = 2 ]; then
+            espsecure.py generate_signing_key --version 2 --scheme "$3" "$1" >/dev/null 2>&1 ||
+                python3 -m espsecure generate-signing-key --version 2 --scheme "$3" "$1"
+        else
+            espsecure.py generate_signing_key --version 1 "$1" >/dev/null 2>&1 ||
+                python3 -m espsecure generate-signing-key --version 1 "$1"
+        fi
+    fi
+}
+case "$PROFILE" in *secure-sbv2*) gen_key secure_boot_signing_key.pem 2 rsa3072 ;; esac
+case "$PROFILE" in *secure-esp32-sbv1*) gen_key secure_boot_signing_key_v1.pem 1 ecdsa256 ;; esac
+
 idf.py -B "$BUILD" -DSDKCONFIG="$BUILD/sdkconfig" -DSDKCONFIG_DEFAULTS="$DEFAULTS" \
     set-target "$TARGET" build
 

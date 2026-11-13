@@ -1,0 +1,7 @@
+# Partition table for the secure profiles: the Secure Boot bootloader is larger, so the
+# partition table moves to 0x10000 (CONFIG_PARTITION_TABLE_OFFSET).
+# Name,     Type, SubType,  Offset,   Size,     Flags
+nvs,        data, nvs,      0x11000,  0x6000,
+nvs_key,    data, nvs_keys, 0x17000,  0x1000,   encrypted
+phy_init,   data, phy,      0x18000,  0x1000,
+factory,    app,  factory,  0x20000,  0x1E0000,

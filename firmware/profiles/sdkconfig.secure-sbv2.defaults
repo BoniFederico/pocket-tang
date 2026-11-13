@@ -1,0 +1,25 @@
+# =====================================================================================
+# PRODUCTION HARDENING: Secure Boot v2 (RSA-3072) + flash encryption (release) + NVS
+# encryption. For ESP32 silicon revision >= v3.0, ESP32-C3 and ESP32-S3.
+#
+# THE FIRST BOOT OF AN IMAGE BUILT WITH THIS PROFILE BURNS EFUSES. THIS IS IRREVERSIBLE:
+# the chip will only ever run images signed with your key, flash contents are encrypted
+# with a key nobody can read, JTAG is disabled. Read docs/user/hardening.md first.
+# =====================================================================================
+CONFIG_PARTITION_TABLE_OFFSET=0x10000
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-secure.csv"
+CONFIG_ESP32_REV_MIN_3=y
+
+CONFIG_SECURE_BOOT=y
+CONFIG_SECURE_BOOT_V2_ENABLED=y
+CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME=y
+CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES=y
+CONFIG_SECURE_BOOT_SIGNING_KEY="secure_boot_signing_key.pem"
+
+CONFIG_SECURE_FLASH_ENC_ENABLED=y
+CONFIG_SECURE_FLASH_ENCRYPTION_MODE_RELEASE=y
+
+CONFIG_NVS_ENCRYPTION=y
+CONFIG_NVS_SEC_KEY_PROTECT_USING_FLASH_ENC=y
+
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y

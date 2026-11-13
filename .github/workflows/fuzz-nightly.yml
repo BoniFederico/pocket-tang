@@ -1,0 +1,47 @@
+name: Nightly fuzzing
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Fuzz ${{ matrix.target }} (10 min)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [json, b64url, jwk, tang, http, web, dns]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends clang-18 libclang-rt-18-dev ninja-build cmake
+      - name: Restore corpus
+        uses: actions/cache@v4
+        with:
+          path: corpus
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-corpus-${{ matrix.target }}-
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang-18 -DPT_FUZZ=ON -DBUILD_TESTING=OFF
+          cmake --build build --target fuzz_${{ matrix.target }}
+      - name: Fuzz
+        run: |
+          mkdir -p corpus && cp -n core/fuzz/corpus/${{ matrix.target }}/* corpus/ || true
+          build/core/fuzz/fuzz_${{ matrix.target }} -max_total_time=600 -max_len=4096 -timeout=10 corpus
+      - name: Upload crash artefacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-crash-${{ matrix.target }}
+          path: |
+            crash-*
+            timeout-*
+            leak-*
